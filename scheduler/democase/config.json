@@ -42,13 +42,13 @@
                             "Class": "iperf3"
                         }
                     ],
-		"Cmd": "git clone https://github.com/huawei-openlab/oct.git"
+		"Cmd": "git clone https://github.com/huawei-openlab/oct-engine.git"
             }
 	],
         "Collects": [
             {
                 "Object": "hostA",
-		"Files": ["./source/oct/README.md", "./source/oct/engine/HowTO.md"]
+		"Files": ["./source/oct-engine/README.md", "./source/oct-engine/HowTO.md"]
             }
         ]
 }
