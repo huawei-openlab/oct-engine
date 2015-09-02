@@ -4,6 +4,7 @@ It reads the `cases` directory from this `oct` project, checks the validation an
 - [How to use the `tcserver`](#howto)
 - [How does the test case organized](#how-do-the-case-files-been-organized)
 - [How to submit a test case](#submit)
+- [How to generate the report](reportGenerator/README.md)
 
 ###HowTo
 ####HowToRun
