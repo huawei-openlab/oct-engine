@@ -1,7 +1,6 @@
-package casevalidator
+package libocit
 
 import (
-	"../libocit"
 	"encoding/json"
 	"io/ioutil"
 	"os"
@@ -83,7 +82,7 @@ func FindCaseJson(baseDir string, caseName string) (json_file string, json_dir s
 	return json_file, json_dir
 }
 
-func checkProp(tc libocit.TestCase) (messages []ValidatorMessage) {
+func checkProp(tc TestCase) (messages []ValidatorMessage) {
 	if len(tc.Name) < 1 {
 		var msg ValidatorMessage
 		msg.Type = "error"
@@ -195,7 +194,7 @@ func checkProp(tc libocit.TestCase) (messages []ValidatorMessage) {
 	return messages
 }
 
-func checkClass(tc libocit.TestCase) (messages []ValidatorMessage) {
+func checkClass(tc TestCase) (messages []ValidatorMessage) {
 	var class_store map[string]bool
 	class_store = make(map[string]bool)
 	var object_store map[string]string
@@ -278,12 +277,12 @@ func checkClass(tc libocit.TestCase) (messages []ValidatorMessage) {
 	return messages
 }
 
-func checkFile(tc libocit.TestCase, casedir string) (messages []ValidatorMessage) {
+func checkFile(tc TestCase, casedir string) (messages []ValidatorMessage) {
 
 	var file_store map[string]string
 	file_store = make(map[string]string)
 
-	files := libocit.GetDirFiles(casedir, "source")
+	files := GetDirFiles(casedir, "source")
 	for index := 0; index < len(files); index++ {
 		file_store[path.Join(casedir, files[index])] = files[index]
 	}
@@ -333,10 +332,10 @@ func ValidateByFile(caseFile string) {
 }
 
 func ValidateByDir(caseDir string, caseName string) (warning_msg []ValidatorMessage, err_msg []ValidatorMessage) {
-	var tc libocit.TestCase
+	var tc TestCase
 	json_file, json_dir := FindCaseJson(caseDir, caseName)
 
-	content := libocit.ReadFile(json_file)
+	content := ReadFile(json_file)
 
 	json.Unmarshal([]byte(content), &tc)
 

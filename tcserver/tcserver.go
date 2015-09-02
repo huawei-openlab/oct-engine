@@ -2,7 +2,6 @@ package main
 
 import (
 	"../lib/libocit"
-	"../lib/casevalidator"
 	"../lib/routes"
 	"bytes"
 	"encoding/json"
@@ -18,24 +17,24 @@ import (
 )
 
 type TCServerConf struct {
-	GitRepo  string
-	CaseFolderName  string
-	Groups    []Group
-	CacheDir string
-	Port     int
+	GitRepo        string
+	CaseFolderName string
+	Groups         []Group
+	CacheDir       string
+	Port           int
 }
 
 type Group struct {
-	Name string
+	Name          string
 	LibFolderName string
 }
 
 type MetaUnit struct {
-	ID     string
-	Name   string
-	GroupDir string
+	ID            string
+	Name          string
+	GroupDir      string
 	LibFolderName string
-	Status string
+	Status        string
 	//0 means not tested
 	TestedTime       int64
 	LastModifiedTime int64
@@ -84,44 +83,44 @@ func LastModified(case_dir string) (last_modified int64) {
 
 func LoadCase(groupDir string, caseName string, caseLibFolderName string) {
 	caseDir := path.Join(groupDir, caseName)
-	_, err_msgs := casevalidator.ValidateByDir(caseDir, "")
+	_, err_msgs := libocit.ValidateByDir(caseDir, "")
 	if len(err_msgs) == 0 {
-				last_modified := LastModified(caseDir)
-				store_md := libocit.MD5(caseDir)
-				if v, ok := store[store_md]; ok {
-					//Happen when we refresh the repo
-					(*v).LastModifiedTime = last_modified
-					fi, err := os.Stat(path.Join(caseDir, "report.md"))
-					if err != nil {
-						(*v).TestedTime = 0
-					} else {
-						(*v).TestedTime = fi.ModTime().Unix()
-					}
-					if (*v).LastModifiedTime > (*v).TestedTime {
-						(*v).Status = "idle"
-					} else {
-						(*v).Status = "tested"
-					}
-				} else {
-					var meta MetaUnit
-					meta.ID = store_md
-					meta.Name = caseName
-					meta.GroupDir = groupDir
-					meta.LibFolderName = caseLibFolderName
-					fi, err := os.Stat(path.Join(caseDir, "report.md"))
-					if err != nil {
-						meta.TestedTime = 0
-					} else {
-						meta.TestedTime = fi.ModTime().Unix()
-					}
-					meta.LastModifiedTime = last_modified
-					if meta.LastModifiedTime > meta.TestedTime {
-						meta.Status = "idle"
-					} else {
-						meta.Status = "tested"
-					}
-					store[store_md] = &meta
-				}
+		last_modified := LastModified(caseDir)
+		store_md := libocit.MD5(caseDir)
+		if v, ok := store[store_md]; ok {
+			//Happen when we refresh the repo
+			(*v).LastModifiedTime = last_modified
+			fi, err := os.Stat(path.Join(caseDir, "report.md"))
+			if err != nil {
+				(*v).TestedTime = 0
+			} else {
+				(*v).TestedTime = fi.ModTime().Unix()
+			}
+			if (*v).LastModifiedTime > (*v).TestedTime {
+				(*v).Status = "idle"
+			} else {
+				(*v).Status = "tested"
+			}
+		} else {
+			var meta MetaUnit
+			meta.ID = store_md
+			meta.Name = caseName
+			meta.GroupDir = groupDir
+			meta.LibFolderName = caseLibFolderName
+			fi, err := os.Stat(path.Join(caseDir, "report.md"))
+			if err != nil {
+				meta.TestedTime = 0
+			} else {
+				meta.TestedTime = fi.ModTime().Unix()
+			}
+			meta.LastModifiedTime = last_modified
+			if meta.LastModifiedTime > meta.TestedTime {
+				meta.Status = "idle"
+			} else {
+				meta.Status = "tested"
+			}
+			store[store_md] = &meta
+		}
 	} else {
 		fmt.Println("Error in loading case: ", caseDir, " . Skip it")
 		return
@@ -152,54 +151,54 @@ func LoadDB() {
 		repo_name := strings.Replace(path.Base(pub_config.GitRepo), ".git", "", 1)
 		group_dir := path.Join(pub_config.CacheDir, repo_name, pub_config.CaseFolderName, pub_config.Groups[g_index].Name)
 		LoadCaseGroup(group_dir, pub_config.Groups[g_index].LibFolderName)
-/*
-		files, _ := ioutil.ReadDir(group_dir)
-		for _, file := range files {
-			if file.IsDir() {
-				//TODO, Qilin is working on case validation work, here we should check it!
-				//	or we can check it in case push phase
-				last_modified := LastModified(path.Join(group_dir, file.Name()))
-				if last_modified == 0 {
-					continue
-				}
+		/*
+			files, _ := ioutil.ReadDir(group_dir)
+			for _, file := range files {
+				if file.IsDir() {
+					//TODO, Qilin is working on case validation work, here we should check it!
+					//	or we can check it in case push phase
+					last_modified := LastModified(path.Join(group_dir, file.Name()))
+					if last_modified == 0 {
+						continue
+					}
 
-				store_md := libocit.MD5(path.Join(pub_config.Group[g_index], file.Name()))
-				if v, ok := store[store_md]; ok {
-					//Happen when we refresh the repo
-					(*v).LastModifiedTime = last_modified
-					fi, err := os.Stat(path.Join(group_dir, file.Name(), "report.md"))
-					if err != nil {
-						(*v).TestedTime = 0
+					store_md := libocit.MD5(path.Join(pub_config.Group[g_index], file.Name()))
+					if v, ok := store[store_md]; ok {
+						//Happen when we refresh the repo
+						(*v).LastModifiedTime = last_modified
+						fi, err := os.Stat(path.Join(group_dir, file.Name(), "report.md"))
+						if err != nil {
+							(*v).TestedTime = 0
+						} else {
+							(*v).TestedTime = fi.ModTime().Unix()
+						}
+						if (*v).LastModifiedTime > (*v).TestedTime {
+							(*v).Status = "idle"
+						} else {
+							(*v).Status = "tested"
+						}
 					} else {
-						(*v).TestedTime = fi.ModTime().Unix()
+						var meta MetaUnit
+						meta.ID = store_md
+						meta.Group = pub_config.Group[g_index]
+						meta.Name = file.Name()
+						fi, err := os.Stat(path.Join(group_dir, file.Name(), "report.md"))
+						if err != nil {
+							meta.TestedTime = 0
+						} else {
+							meta.TestedTime = fi.ModTime().Unix()
+						}
+						meta.LastModifiedTime = last_modified
+						if meta.LastModifiedTime > meta.TestedTime {
+							meta.Status = "idle"
+						} else {
+							meta.Status = "tested"
+						}
+						store[store_md] = &meta
 					}
-					if (*v).LastModifiedTime > (*v).TestedTime {
-						(*v).Status = "idle"
-					} else {
-						(*v).Status = "tested"
-					}
-				} else {
-					var meta MetaUnit
-					meta.ID = store_md
-					meta.Group = pub_config.Group[g_index]
-					meta.Name = file.Name()
-					fi, err := os.Stat(path.Join(group_dir, file.Name(), "report.md"))
-					if err != nil {
-						meta.TestedTime = 0
-					} else {
-						meta.TestedTime = fi.ModTime().Unix()
-					}
-					meta.LastModifiedTime = last_modified
-					if meta.LastModifiedTime > meta.TestedTime {
-						meta.Status = "idle"
-					} else {
-						meta.Status = "tested"
-					}
-					store[store_md] = &meta
 				}
 			}
-		}
-*/
+		*/
 	}
 }
 
