@@ -1,1 +1,2 @@
-split cases to another repo
+- split cases to another repo
+- if no `ocitd`, use `scp` (auth issue?)
