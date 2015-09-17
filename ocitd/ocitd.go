@@ -13,7 +13,7 @@ import (
 	"os/exec"
 	"path"
 
-//	"strings"
+	//	"strings"
 )
 
 /*
@@ -89,6 +89,8 @@ func RunCommand(cmd string, dir string) {
 	if pub_config.Debug {
 		fmt.Println("Run the command < ", cmd, ">  in ", dir)
 	}
+	//check it since some case only has a config.json
+	libocit.PreparePath(dir, "")
 	os.Chdir(dir)
 
 	debugging := true
@@ -148,11 +150,8 @@ func FindJsonDir(base_dir string) (json_dir string) {
 			fileSuffix := path.Ext(file.Name())
 			if fileSuffix == ".json" {
 				_, err := os.Stat(path.Join(base_dir, "source"))
-				if err != nil {
-					continue
-				} else {
-					//  ./casename.json, ./source/
-					json_dir = base_dir
+				json_dir = base_dir
+				if err == nil {
 					return json_dir
 				}
 			}
