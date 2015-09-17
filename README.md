@@ -38,10 +38,12 @@ Refers to [cases/README](cases/README.md)
 - PASS provider
 - Any container user
 
-### Try OCT
-Refers to [How to use OCT](HowTO.md)
 
 ### How to involve
+- Fork the repository on GitHub
+- Read the [APIs](API.md) to test each service
+- Play with the project, submit bugs, submit patches!
+
 If any issues are encountered while using the oct-engine project, several avenues are available for support:
 <table>
 <tr>
@@ -62,11 +64,27 @@ If any issues are encountered while using the oct-engine project, several avenue
 </tr>
 </table>
 
-### Getting Started
 
-- Fork the repository on GitHub
-- Read the [APIs](API.md) to test each service
-- Play with the project, submit bugs, submit patches!
+### [Getting Started](HowTO.md)
+OCT-engine support multiple servers, `testserver` will manage all the end-node machines
+with `ocitd` deployed.
+But We can run `testserver` and `ocitd` on a single machine with the default configuration (ip/port)
+to get a first impression of the OCT-engine.
+
+```
+git clone https://github.com/huawei-openlab/oct-engine.git
+cd oct-engine
+make
+cd testserver
+./testserver &
+cd ../ocitd
+./ocitd &
+cd ../scheduler/democase
+tar czvf ../democase.tar.gz *
+cd ..
+# choose a testcase.
+./scheduler democase.tar.gz
+```
 
 ### Quick look of the testing report
 
