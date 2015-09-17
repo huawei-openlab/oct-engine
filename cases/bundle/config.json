@@ -1,0 +1,42 @@
+{
+        "Name": "Bundle Validator",
+        "Summary": "Validate if a bundle was a standard container",
+        "Version": "0.1",
+        "Owner": "liangchenye@huawei.com",
+        "Description": "The rootfs/config.json/runtime.json should follow the OCI spec, the tool is used to verify that",
+        "Group": "Spec/Bundle",
+        "License": "Apache 2.0",
+        "Requires": [
+            {
+                    "Class": "operOS",
+                    "Type": "os",
+		    "Distribution": "Ubuntu",
+		    "Version": "12.04",
+                    "Resource": {
+                        "CPU": 1,
+                        "Memory": "2GB",
+                        "Disk": "10G"
+                    }
+            }
+        ],
+        "Deploys": [
+            {
+                "Object": "hostA",
+                "class": "operOS",
+		"Cmd": "wget https://github.com/liangchenye/oct/releases/download/v0.1/demo-bundle.tar.gz; tar xzvf demo-bundle.tar.gz ; wget https://github.com/liangchenye/oct/releases/download/v0.1/oct-v0.1.tar.gz; tar xzvf oct-v0.1.tar.gz"
+            }
+	],
+        "Run": [
+            {
+                "Object": "hostA",
+                "class": "operOS",
+		"Cmd": "./scv -o bundle.log b demo-bundle"
+            }
+	],
+        "Collects": [
+            {
+                "Object": "hostA",
+		"Files": ["./source/bundle.log"]
+            }
+        ]
+}

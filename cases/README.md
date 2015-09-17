@@ -1,6 +1,6 @@
 ##The testcase should be written in JSON format, including five parts:
 ```
-  "Description" part, "Requires", "Deploy", "Run" and "Collect". 
+  "Description" part, "Requires", "Deploys", "Run" and "Collects". 
 ```
 
 - We provide a 'casevalidator' for case writers, Read the [HowTO](../engine/tools/casevalidator/HowTO.md) to check if your case was valid.
