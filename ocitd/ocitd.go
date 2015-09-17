@@ -16,15 +16,6 @@ import (
 	//	"strings"
 )
 
-/*
-#include <stdio.h>
-#include <stdlib.h>
-int CSystem(char *cmd){
-	return system (cmd);
-}
-*/
-import "C"
-
 type OCTDConfig struct {
 	TSurl    string
 	Port     int
@@ -45,7 +36,8 @@ func GetResult(w http.ResponseWriter, r *http.Request) {
 		realurl = filename
 	} else {
 		json_dir := FindJsonDir(path.Join(pub_config.CacheDir, ID))
-		realurl = path.Join(json_dir, filename)
+		//default CWD is 'source'
+		realurl = path.Join(json_dir, "source", filename)
 		_, err = os.Stat(realurl)
 		if err != nil {
 			w.Write([]byte("Cannot find the file: " + realurl))
@@ -93,20 +85,9 @@ func RunCommand(cmd string, dir string) {
 	libocit.PreparePath(dir, "")
 	os.Chdir(dir)
 
-	debugging := true
-	if debugging {
-		c := exec.Command("/bin/sh", "-c", cmd)
-		c.Run()
-	} else {
-		C.CSystem(C.CString(cmd))
-	}
+	c := exec.Command("/bin/sh", "-c", cmd)
+	c.Run()
 	return
-
-	// Golang bug? cannot get the standard output
-	//	fmt.Println("Run the command ", cmd)
-	//	c := exec.Command("/bin/sh", "-c", cmd)
-	//	c.Run()
-	//	fmt.Println("After run the command ", cmd)
 }
 
 func PullImage(container libocit.Container) {
