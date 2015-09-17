@@ -57,6 +57,8 @@ which commands should be used to deploy the test.
 The commands could be used directly or wrapped by a script. 
 By default, after runing all the command, the test system will continue to the 'Run' part.
 If the developer want to install extra package, he/she can put the related commands here. 
+The default `CWD` in the `Cmd` is the 'source' directory.
+
 ```
   "Deploys": [
             {
@@ -90,8 +92,10 @@ If the developer want to install extra package, he/she can put the related comma
 ### "Run"
 The case developer should tell the host operation systems and the containers
 which commands should be used to run the test. The commands could be used 
-directly or wrapped by a script. By default, after ruuning all the command, the test 
-system will continue to the 'Collect' part.
+directly or wrapped by a script. By default, after running all the command, the test 
+system will continue to the 'Collects' part.
+The default `CWD` in the `Cmd` is the 'source' directory.
+
 ```
 "Run": [
             { "Object": "HostA",
