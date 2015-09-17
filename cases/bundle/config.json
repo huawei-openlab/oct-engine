@@ -35,7 +35,7 @@
         "Collects": [
             {
                 "Object": "hostA",
-		"Files": ["./source/bundle.log"]
+		"Files": ["bundle.log"]
             }
         ]
 }
