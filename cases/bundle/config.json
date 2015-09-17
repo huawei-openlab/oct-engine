@@ -29,7 +29,6 @@
         "Run": [
             {
                 "Object": "hostA",
-                "class": "operOS",
 		"Cmd": "./scv -o bundle.log b demo-bundle"
             }
 	],
