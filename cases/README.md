@@ -110,10 +110,11 @@ The default `CWD` in the `Cmd` is the 'source' directory.
 ### "Collects"
 The case developer should tell the host operation systems and/or the containers 
 if there was any output file.
+The default `CWD` in the `Files` is the 'source' directory.
 ```
 "Collects": [
         {"Object": "HostA",
-          "Files": ["./source/output.json"]  //this file will be return to our framework as the output
+          "Files": ["output.json"]  //this file will be return to our framework as the output
         }
   ]
 ```
