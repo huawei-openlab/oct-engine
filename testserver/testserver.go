@@ -83,7 +83,7 @@ func SetStatus(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(ret_string))
 }
 
-//TODO make it async 
+//TODO make it async
 //This is the main task running function
 func RunTask(taskID string) {
 
@@ -106,7 +106,7 @@ func RunTask(taskID string) {
 		}
 		libocit.SendCommand(post_url, []byte(content))
 
-		//TODO: add the container command 
+		//TODO: add the container command
 	}
 
 	//Run
@@ -124,7 +124,7 @@ func RunTask(taskID string) {
 		}
 		libocit.SendCommand(post_url, []byte(content))
 
-		//TODO: add the container command 
+		//TODO: add the container command
 	}
 
 	//Collect
@@ -208,18 +208,31 @@ func AllocateOS(task libocit.Task) (success bool) {
 }
 
 func ReceiveTask(w http.ResponseWriter, r *http.Request) {
+	var task libocit.Task
+	var ret libocit.HttpRet
+	var content string
+
 	real_url, params := libocit.ReceiveFile(w, r, pub_config.CacheDir)
 
 	taskID := params["id"]
-
-	var task libocit.Task
 	task.ID = taskID
 
 	// for example, we have taskID.tar.gz
 	//  untar it, the test case will be put into taskID/config.json
 	// Should always use 'config.json'
 	// content := libocit.ReadTar(real_url, "config.json", "")
-	content := libocit.ReadCaseFromTar(real_url)
+	if strings.HasSuffix(real_url, ".tar.gz") {
+		content = libocit.ReadCaseFromTar(real_url)
+	} else if strings.HasSuffix(real_url, ".json") {
+		content = libocit.ReadFile(real_url)
+	} else {
+		ret.Status = "Failed"
+		ret.Message = "The testcase is not standard. (.tar.gz or .json)"
+		ret_string, _ := json.Marshal(ret)
+		w.Write([]byte(ret_string))
+		return
+	}
+
 	if pub_config.Debug {
 		fmt.Println(content)
 	}
@@ -259,7 +272,6 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	var ret libocit.HttpRet
 	if success_count == len(task.TC.Deploys) {
 		ret.Status = "OK"
 		ret.Message = "success in receiving task files"
@@ -311,7 +323,7 @@ func GetOSQuery(r *http.Request) (os libocit.OS) {
 
 // Will use sql to seach, for now, just
 //TODO: different ID even same Class, add the ticket?
-func GetAvaliableResource(os_query libocit.OS) (ID string) {
+func GetAvaliableResource(os_query libocit.OS) string {
 	for _, os := range store {
 		if len(os_query.Distribution) > 1 {
 			if strings.EqualFold(os_query.Distribution, (*os).Distribution) == false {
@@ -337,8 +349,7 @@ func GetAvaliableResource(os_query libocit.OS) (ID string) {
 			log.Println("not enough Memory")
 			continue
 		}
-		ID = (*os).ID
-		return ID
+		return (*os).ID
 	}
 	return ""
 }

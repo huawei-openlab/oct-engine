@@ -260,9 +260,15 @@ func ReceiveFile(w http.ResponseWriter, r *http.Request, cache_url string) (real
 		fmt.Println("Cannot find the tc file")
 		return real_url, params
 	}
+
 	defer file.Close()
 
-	real_url = PreparePath(cache_url, handler.Filename)
+	//Receive to the cache/task_id dir
+	if val, ok := params["id"]; ok {
+		real_url = PreparePath(path.Join(cache_url, val), handler.Filename)
+	} else {
+		real_url = PreparePath(cache_url, handler.Filename)
+	}
 	f, err := os.Create(real_url)
 	if err != nil {
 		fmt.Println("Cannot create the file ", real_url)

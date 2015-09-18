@@ -12,8 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
-
-	//	"strings"
+	"strings"
 )
 
 type OCTDConfig struct {
@@ -59,21 +58,23 @@ func GetResult(w http.ResponseWriter, r *http.Request) {
 }
 
 func UploadFile(w http.ResponseWriter, r *http.Request) {
+	var ret libocit.HttpRet
 	real_url, params := libocit.ReceiveFile(w, r, pub_config.CacheDir)
 
 	fmt.Println(params)
 
 	if val, ok := params["id"]; ok {
-		libocit.UntarFile(path.Join(pub_config.CacheDir, val), real_url)
+		if strings.HasSuffix(real_url, ".tar.gz") {
+			libocit.UntarFile(path.Join(pub_config.CacheDir, val), real_url)
+		}
+		ret.Status = "OK"
 	} else {
-
-		libocit.UntarFile(pub_config.CacheDir, real_url)
+		ret.Status = "Failed"
+		ret.Message = "Cannot find the task id"
 	}
-	var ret libocit.HttpRet
-	ret.Status = "OK"
+
 	ret_string, _ := json.Marshal(ret)
 	w.Write([]byte(ret_string))
-
 	return
 }
 
