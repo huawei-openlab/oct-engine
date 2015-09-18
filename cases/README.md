@@ -3,7 +3,8 @@ Before using/reading/writing an OCT case, please read the [Specs](spec.md).
 
 #Cases in github
 The 'group' is defined to make it easier to manage cases.
-For example, now we have groups like `network`, `specs`. Under each group are the named case bundles.
+For example, now we have groups like `network`, `specs`. 
+Under each group are the named [case bundles](spec.md#case-bundle).
 
 #How to submit your case
 - Name your case bundle, choose the right group and submit your bundle there. If your cannot find a suitable 'group', please fire an issue and create a new group.
