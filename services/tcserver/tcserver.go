@@ -16,20 +16,19 @@ import (
 	"strings"
 )
 
-type GitRepo struct {
+type CaseRepo struct {
+	Name       string
+	CaseFolder string
+	//We can disable a repo
+	Enable bool
+	Groups []string
 }
 
 type TCServerConf struct {
-	GitRepo        string
-	CaseFolderName string
-	Groups         []Group
-	CacheDir       string
-	Port           int
-}
-
-type Group struct {
-	Name          string
-	LibFolderName string
+	Repos    []CaseRepo
+	CacheDir string
+	Port     int
+	Debug    bool
 }
 
 type MetaUnit struct {
@@ -46,24 +45,34 @@ type MetaUnit struct {
 var store = map[string]*MetaUnit{}
 var pub_config TCServerConf
 
-func RefreshRepo() {
-	var cmd string
-	libocit.PreparePath(pub_config.CacheDir, "")
-	repo_name := strings.Replace(path.Base(pub_config.GitRepo), ".git", "", 1)
-	//FIXME: better way? using github go lib in the future
-	git_check_url := path.Join(pub_config.CacheDir, repo_name, ".git/config")
-	_, err := os.Stat(git_check_url)
-
-	if err != nil {
-		cmd = "cd " + pub_config.CacheDir + " ; git clone " + pub_config.GitRepo
-	} else {
-		cmd = "cd " + path.Join(pub_config.CacheDir, repo_name) + " ; git pull"
+func RefreshRepo(repo CaseRepo) {
+	if repo.Enable == false {
+		if repo.Debug == true {
+			fmt.Println("The repo ", repo.Name, " is disabled")
+		}
+		return
 	}
 
-	fmt.Println("Refresh by using ", cmd)
+	var cmd string
+	repoDir := libocit.PreparePath(pub_config.CacheDir, repo.Name)
+
+	git_check_url := path.Join(repoDir, ".git/config")
+	_, err := os.Stat(git_check_url)
+	if err != nil {
+		//Clean: remove the '/$' if there was one
+		cmd = "cd " + path.Dir(path.Clean(repoDir)) + " ; git clone https://" + repo.Name + ".git"
+	} else {
+		cmd = "cd " + repoDir + " ; git pull"
+	}
+
+	if repo.Debug == true {
+		fmt.Println("Refresh by using ", cmd)
+	}
 	c := exec.Command("/bin/sh", "-c", cmd)
 	c.Run()
-	fmt.Println("Refresh done")
+	if repo.Debug == true {
+		fmt.Println("Refresh done")
+	}
 }
 
 func LastModified(case_dir string) (last_modified int64) {
@@ -148,60 +157,16 @@ func LoadCaseGroup(groupDir string, libDir string) {
 }
 
 func LoadDB() {
-	RefreshRepo()
+	repos := pub_config.Repos
+	for index := 0; index < len(repos); index++ {
+		RefreshRepo(repos[index])
+	}
 
+	//TODO: get all the case job with repo infos
 	for g_index := 0; g_index < len(pub_config.Groups); g_index++ {
 		repo_name := strings.Replace(path.Base(pub_config.GitRepo), ".git", "", 1)
 		group_dir := path.Join(pub_config.CacheDir, repo_name, pub_config.CaseFolderName, pub_config.Groups[g_index].Name)
 		LoadCaseGroup(group_dir, pub_config.Groups[g_index].LibFolderName)
-		/*
-			files, _ := ioutil.ReadDir(group_dir)
-			for _, file := range files {
-				if file.IsDir() {
-					//TODO, Qilin is working on case validation work, here we should check it!
-					//	or we can check it in case push phase
-					last_modified := LastModified(path.Join(group_dir, file.Name()))
-					if last_modified == 0 {
-						continue
-					}
-
-					store_md := libocit.MD5(path.Join(pub_config.Group[g_index], file.Name()))
-					if v, ok := store[store_md]; ok {
-						//Happen when we refresh the repo
-						(*v).LastModifiedTime = last_modified
-						fi, err := os.Stat(path.Join(group_dir, file.Name(), "report.md"))
-						if err != nil {
-							(*v).TestedTime = 0
-						} else {
-							(*v).TestedTime = fi.ModTime().Unix()
-						}
-						if (*v).LastModifiedTime > (*v).TestedTime {
-							(*v).Status = "idle"
-						} else {
-							(*v).Status = "tested"
-						}
-					} else {
-						var meta MetaUnit
-						meta.ID = store_md
-						meta.Group = pub_config.Group[g_index]
-						meta.Name = file.Name()
-						fi, err := os.Stat(path.Join(group_dir, file.Name(), "report.md"))
-						if err != nil {
-							meta.TestedTime = 0
-						} else {
-							meta.TestedTime = fi.ModTime().Unix()
-						}
-						meta.LastModifiedTime = last_modified
-						if meta.LastModifiedTime > meta.TestedTime {
-							meta.Status = "idle"
-						} else {
-							meta.Status = "tested"
-						}
-						store[store_md] = &meta
-					}
-				}
-			}
-		*/
 	}
 }
 
@@ -300,6 +265,7 @@ func main() {
 	port := fmt.Sprintf(":%d", pub_config.Port)
 	fmt.Println("Listen to port ", port)
 	mux := routes.New()
+	//TODO: list repos; add repos; enable/disable repos
 	mux.Get("/case", ListCases)
 	mux.Post("/case", RefreshCases)
 	mux.Get("/case/:ID", GetCase)
