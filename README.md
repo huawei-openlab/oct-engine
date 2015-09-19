@@ -39,9 +39,9 @@ Refers to [cases/spec](cases/spec.md)
 - Any container user
 
 
-### How to involve
+### How to involve the oct-service
 - Fork the repository on GitHub
-- Read the [APIs](API.md) to test each service
+- Read the [APIs](services/API.md) to test each service
 - Play with the project, submit bugs, submit patches!
 
 If any issues are encountered while using the oct-engine project, several avenues are available for support:
@@ -65,7 +65,7 @@ If any issues are encountered while using the oct-engine project, several avenue
 </table>
 
 
-### [Getting Started](HowTO.md)
+### [Getting Started with oct-service](HowTO.md)
 OCT-engine support multiple servers, `testserver` will manage all the end-node machines
 with `ocitd` deployed.
 But We can run `testserver` and `ocitd` on a single machine with the default configuration (ip/port)
@@ -73,7 +73,7 @@ to get a first impression of the OCT-engine.
 
 ```
 git clone https://github.com/huawei-openlab/oct-engine.git
-cd oct-engine
+cd oct-engine/services
 make
 cd testserver
 ./testserver &
@@ -88,6 +88,6 @@ cd ..
 
 ### Quick look of the testing report
 
-The [testing report](cases/report) will keep updating.
+The [testing report](cases/case-report) will keep updating.
 
 

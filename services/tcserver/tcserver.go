@@ -16,6 +16,9 @@ import (
 	"strings"
 )
 
+type GitRepo struct {
+}
+
 type TCServerConf struct {
 	GitRepo        string
 	CaseFolderName string
@@ -230,7 +233,7 @@ func ListCases(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	case_string, err := json.Marshal(case_list)
+	case_string, err := json.MarshalIndent(case_list, "", "\t")
 	if err != nil {
 		w.Write([]byte("[]"))
 	} else {
@@ -285,7 +288,7 @@ func RefreshCases(w http.ResponseWriter, r *http.Request) {
 	RefreshRepo()
 	var ret libocit.HttpRet
 	ret.Status = "OK"
-	ret_string, _ := json.Marshal(ret)
+	ret_string, _ := json.MarshalIndent(ret, "", "\t")
 	w.Write([]byte(ret_string))
 }
 
