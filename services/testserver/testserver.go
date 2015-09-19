@@ -1,8 +1,8 @@
 package main
 
 import (
-	"../lib/libocit"
-	"../lib/routes"
+	"../../lib/libocit"
+	"../../lib/routes"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -94,7 +94,8 @@ func RunTask(taskID string) {
 	testCommand.ID = taskID
 	testCommand.Status = "deploy"
 	for index := 0; index < len(task.TC.Deploys); index++ {
-		id := task.TC.Deploys[index].ID
+		objectName := task.TC.Deploys[index].Object
+		id := task.HostMap[objectName]
 		hostOS := *(store[id])
 		//TODO: 9001 will be replaced with OS.Port
 		post_url := "http://" + hostOS.IP + ":9001/command"
@@ -113,7 +114,8 @@ func RunTask(taskID string) {
 
 	testCommand.Status = "run"
 	for index := 0; index < len(task.TC.Run); index++ {
-		id := task.TC.Run[index].ID
+		objectName := task.TC.Run[index].Object
+		id := task.HostMap[objectName]
 		hostOS := *(store[id])
 		//TODO: 9001 will be replaced with OS.Port
 		post_url := "http://" + hostOS.IP + ":9001/command"
@@ -130,7 +132,7 @@ func RunTask(taskID string) {
 	//Collect
 	for index := 0; index < len(task.TC.Collects); index++ {
 		collect := task.TC.Collects[index]
-		id := collect.ID
+		id := task.HostMap[collect.Object]
 		hostOS := *(store[id])
 		for f_index := 0; f_index < len(collect.Files); f_index++ {
 			//TODO: 9001 will be replaced with OS.Port
@@ -161,7 +163,7 @@ func RunTask(taskID string) {
 	}
 }
 
-func AllocateOS(task libocit.Task) (success bool) {
+func AllocateOS(task libocit.Task) bool {
 	for index := 0; index < len(task.TC.Requires); index++ {
 		req := task.TC.Requires[index]
 		if req.Type == "os" {
@@ -171,40 +173,29 @@ func AllocateOS(task libocit.Task) (success bool) {
 			os_query.Version = req.Version
 			id := GetAvaliableResource(os_query)
 			if len(id) < 1 {
-				success = false
-				return success
+				return false
 			}
 			task.OSList = append(task.OSList, *(store[id]))
 			for d_index := 0; d_index < len(task.TC.Deploys); d_index++ {
 				deploy := task.TC.Deploys[d_index]
 				if deploy.Class == req.Class {
-					task.TC.Deploys[d_index].ID = id
-					for r_index := 0; r_index < len(task.TC.Run); r_index++ {
-						run := task.TC.Run[r_index]
-						if deploy.Object == run.Object {
-							task.TC.Run[r_index].ID = id
-						}
-
+					objectName := task.TC.Deploys[d_index].Object
+					//One required class maybe used in multiply instances
+					if _, ok := task.HostMap[objectName]; ok {
+						continue
+					} else {
+						task.HostMap[objectName] = id
 					}
-					for c_index := 0; c_index < len(task.TC.Collects); c_index++ {
-						collect := task.TC.Collects[c_index]
-						if deploy.Object == collect.Object {
-							task.TC.Collects[c_index].ID = id
-						}
-
-					}
-
 				}
 
 			}
 			if pub_config.Debug {
-				ret_string, _ := json.Marshal(task.TC)
+				ret_string, _ := json.MarshalIndent(task.TC, "", "\t")
 				fmt.Println("get --- id ---- ", string(ret_string))
 			}
 		}
 	}
-	success = true
-	return success
+	return true
 }
 
 func ReceiveTask(w http.ResponseWriter, r *http.Request) {
@@ -216,6 +207,7 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 
 	taskID := params["id"]
 	task.ID = taskID
+	task.HostMap = make(map[string]string)
 
 	// for example, we have taskID.tar.gz
 	//  untar it, the test case will be put into taskID/config.json
@@ -228,7 +220,7 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 	} else {
 		ret.Status = "Failed"
 		ret.Message = "The testcase is not standard. (.tar.gz or .json)"
-		ret_string, _ := json.Marshal(ret)
+		ret_string, _ := json.MarshalIndent(ret, "", "\t")
 		w.Write([]byte(ret_string))
 		return
 	}
@@ -243,7 +235,7 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 		ret.Status = "Failed"
 		ret.Message = "Donnot have the required operation systems"
 
-		ret_string, _ := json.Marshal(ret)
+		ret_string, _ := json.MarshalIndent(ret, "", "\t")
 		if pub_config.Debug {
 			fmt.Println(string(ret_string))
 		}
@@ -256,7 +248,8 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 	success_count = 0
 	for index := 0; index < len(task.TC.Deploys); index++ {
 		deploy := task.TC.Deploys[index]
-		os := *(store[deploy.ID])
+		osID := task.HostMap[deploy.Object]
+		os := *(store[osID])
 		post_url := "http://" + os.IP + ":9001/task"
 		fmt.Println("Receive and send file ", real_url, " to  ", post_url)
 
@@ -280,7 +273,7 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 		ret.Message = "Some testing files were not send successfully"
 	}
 
-	ret_string, _ := json.Marshal(ret)
+	ret_string, _ := json.MarshalIndent(ret, "", "\t")
 	w.Write([]byte(ret_string))
 
 	RunTask(taskID)
@@ -402,11 +395,11 @@ func GetOS(w http.ResponseWriter, r *http.Request) {
 			oss = append(oss, *(store[ids[index]]))
 		}
 
-		data, _ := json.Marshal(oss)
+		data, _ := json.MarshalIndent(oss, "", "\t")
 		ret.Data = string(data)
 	}
 
-	body, _ := json.Marshal(ret)
+	body, _ := json.MarshalIndent(ret, "", "\t")
 	w.Write([]byte(body))
 }
 
@@ -443,7 +436,7 @@ func PostOS(w http.ResponseWriter, r *http.Request) {
 		}
 		lock.Unlock()
 	}
-	ret_body, _ := json.Marshal(ret)
+	ret_body, _ := json.MarshalIndent(ret, "", "\t")
 	w.Write([]byte(ret_body))
 }
 
@@ -476,7 +469,7 @@ func init_db(filename string) {
 	for index := 0; index < len(_servers.Servers); index++ {
 		os := _servers.Servers[index]
 		os.Status = "free"
-		content, _ := json.Marshal(os)
+		content, _ := json.MarshalIndent(os, "", "\t")
 		id := libocit.MD5(string(content))
 		os.ID = id
 		store[id] = &os

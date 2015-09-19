@@ -28,7 +28,7 @@ The oct-engine provides the framework for the open container testing.
     It uses the github as the static test case database.
     
 ## TestCase specification
-Refers to [cases/README](cases/README.md) 
+Refers to [cases/spec](cases/spec.md) 
 
 ## Who should join
 - Container project developer

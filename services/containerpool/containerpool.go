@@ -1,8 +1,8 @@
 package main
 
 import (
-	"../lib/libocit"
-	"../lib/routes"
+	"../../lib/libocit"
+	"../../lib/routes"
 	"encoding/json"
 	"fmt"
 	"io"

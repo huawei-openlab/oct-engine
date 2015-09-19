@@ -15,7 +15,7 @@ type ValidatorMessage struct {
 
 // The case now could be like this:
 //  in this case type, we will send all the files to all the hostOS
-//   casegroup 
+//   casegroup
 //          |____ casedir
 //          |         |___ casename.json
 //          |         |___ `source`        (must be `source`)
@@ -25,7 +25,7 @@ type ValidatorMessage struct {
 //          |                  |____ dir1
 //          |                  |____ ...
 //          |                  |____ dirN
-//          |                 
+//          |
 //          |____  caselibdir
 //                    |_____ libfile1
 //                    |_____  ....
@@ -111,12 +111,6 @@ func checkProp(tc TestCase) (messages []ValidatorMessage) {
 		var msg ValidatorMessage
 		msg.Type = "warning"
 		msg.Data = "'Owner' not found."
-		messages = append(messages, msg)
-	}
-	if len(tc.Sources) > 0 {
-		var msg ValidatorMessage
-		msg.Type = "warning"
-		msg.Data = "Don't need to add `Source in this part."
 		messages = append(messages, msg)
 	}
 

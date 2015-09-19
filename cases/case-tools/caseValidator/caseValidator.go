@@ -1,14 +1,14 @@
 package main
 
 import (
+	"../../../lib/libocit"
 	"flag"
 	"fmt"
-	"../../lib/libocit"
 )
 
 // The case now could be like this:
 //  in this case type, we will send all the files to all the hostOS
-//   casegroup 
+//   casegroup
 //          |____ casedir
 //          |         |___ casename.json
 //          |         |___ `source`        (must be `source`)
@@ -18,7 +18,7 @@ import (
 //          |                  |____ dir1
 //          |                  |____ ...
 //          |                  |____ dirN
-//          |                 
+//          |
 //          |____  caselibdir
 //                    |_____ libfile1
 //                    |_____  ....

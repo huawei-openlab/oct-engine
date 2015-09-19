@@ -32,8 +32,12 @@ type Task struct {
 	ID     string
 	TC     TestCase
 	OSList []OS
+
+	// HostMap[deploy.objectName] = OS.ID
+	HostMap map[string]string
 }
 
+//FIXME: id need to restruct to a map in task
 type Deploy struct {
 	Object     string
 	Class      string
@@ -41,7 +45,7 @@ type Deploy struct {
 	Files      []string
 	Containers []Container
 	//if it was hostOS, the ID is the host OS ID
-	ID string
+	id string
 }
 
 //FIXME: the type is not consistent
@@ -74,7 +78,7 @@ type Collect struct {
 	Files  []string
 
 	//if it was hostOS, the ID is the host OS ID
-	ID string
+	id string
 }
 
 type TestCase struct {
@@ -85,7 +89,6 @@ type TestCase struct {
 	Group       string
 	Owner       string
 	Description string
-	Sources     []string
 	Requires    []Require
 	Deploys     []Deploy
 	Run         []Deploy

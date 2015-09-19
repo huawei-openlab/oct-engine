@@ -43,7 +43,7 @@ curl localhost:8011/case/5e1bde28cdf2ea66b41c7a7508f744cf > version_correct.tar.
 The version_correct.tar.gz file could used by the `Schedular` service to and the whole testing will be completed after that.
 
 ###How do the case files been organized
-The ideal case struct should be like this:
+The ideal case struct should be like this [case bundle](https://github.com/huawei-openlab/oct-engine/blob/master/cases/spec.md#case-bundle):
 
 ```
 casedir
