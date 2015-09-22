@@ -1,5 +1,15 @@
-##The `Test Case Server` provides valid testcases for the user/developer or the `Scheduler` to use.
-It reads the `cases` directory from this `oct` project, checks the validation and provides [APIs](API.md).
+##Test Case Server
+The 'tcserver' provides valid testcases with Restful [APIs](API.md) for the users.
+
+##Case Repos
+The official case repo is in [oct](https://github.com/huawei-openlab/oct-engine/cases).
+But the tcserver admin can add more repos to the configuration file [tcserver.config](tcserver.config).
+Please refer to [How to add a repo](#how-to-add-a-repo] and [How to organize a repo](#how-to-organize-a-repo) to manager your own case repo.
+
+##Cases
+The cases in the enabled repo will be validated and providered.
+Please refer to [How to add write a testcase](#how-to-write-a-testcase].
+
 
 - [How to use the `tcserver`](#howto)
 - [How does the test case organized](#how-do-the-case-files-been-organized)
