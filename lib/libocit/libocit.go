@@ -98,7 +98,7 @@ type TestCase struct {
 type HttpRet struct {
 	Status  string
 	Message string
-	Data    string
+	Data    interface{}
 }
 
 //Set the object status, for example, set an HostA to 'running'

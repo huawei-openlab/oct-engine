@@ -395,8 +395,7 @@ func GetOS(w http.ResponseWriter, r *http.Request) {
 			oss = append(oss, *(store[ids[index]]))
 		}
 
-		data, _ := json.MarshalIndent(oss, "", "\t")
-		ret.Data = string(data)
+		ret.Data = oss
 	}
 
 	body, _ := json.MarshalIndent(ret, "", "\t")
