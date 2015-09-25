@@ -43,14 +43,41 @@ type Case struct {
 }
 
 var pub_config TCServerConf
+
+//TODO, need to add a lock
 var repoStore = map[string]*CaseRepo{}
 var caseStore = map[string]*Case{}
 
+//TODO, Put it into the lib, use lib
+func RepoValid(repo CaseRepo) (valid bool, msgs []string) {
+	valid = true
+	if len(repo.Name) == 0 {
+		msgs = append(msgs, "Name is empty")
+		valid = false
+	}
+	if len(repo.CaseFolder) == 0 {
+		msgs = append(msgs, "CaseFolder is empty")
+		valid = false
+	}
+	if len(repo.Groups) == 0 {
+		msgs = append(msgs, "Group is empty")
+		valid = false
+	}
+	return valid, msgs
+}
+
 func RefreshRepo(repoID string) {
 	var cmd string
-	repo := *repoStore[repoID]
-	repoDir := libocit.PreparePath(pub_config.CacheDir, repo.Name)
+	v, ok := repoStore[repoID]
+	if ok == false {
+		return
+	}
+	repo := *v
+	if repo.Enable == false {
+		return
+	}
 
+	repoDir := libocit.PreparePath(pub_config.CacheDir, repo.Name)
 	git_check_url := path.Join(repoDir, ".git/config")
 	_, err := os.Stat(git_check_url)
 	if err != nil {
@@ -90,6 +117,7 @@ func LastModified(case_dir string) (last_modified int64) {
 
 func LoadCase(repoID string, groupDir string, caseName string) {
 	caseDir := path.Join(groupDir, caseName)
+	fmt.Println("caseDir ", caseDir)
 	_, err_msgs := libocit.ValidateByDir(caseDir, "")
 	if len(err_msgs) == 0 {
 		last_modified := LastModified(caseDir)
@@ -135,19 +163,26 @@ func LoadCase(repoID string, groupDir string, caseName string) {
 }
 
 func LoadRepos() {
-	for id, repo := range repoStore {
-		if repo.Enable == true {
-			RefreshRepo(id)
-			LoadCasesFromRepo(id)
-		}
+	for id, _ := range repoStore {
+		RefreshRepo(id)
+		LoadCasesFromRepo(id)
 	}
 
 }
 
 func LoadCasesFromRepo(repoID string) {
-	repo := *repoStore[repoID]
+	v, ok := repoStore[repoID]
+	if ok == false {
+		return
+	}
+
+	repo := *v
+	if repo.Enable == false {
+		return
+	}
 	for index := 0; index < len(repo.Groups); index++ {
-		groupDir := path.Join(pub_config.CacheDir, repo.Name, repo.Groups[index])
+		groupDir := path.Join(pub_config.CacheDir, repo.Name, repo.CaseFolder, repo.Groups[index])
+		fmt.Println("groupDir ", groupDir)
 		files, _ := ioutil.ReadDir(groupDir)
 		for _, file := range files {
 			if file.IsDir() {
@@ -189,7 +224,7 @@ func ListRepos(w http.ResponseWriter, r *http.Request) {
 
 func GetRepo(w http.ResponseWriter, r *http.Request) {
 	var ret libocit.HttpRet
-	repoID := r.URL.Query().Get("ID")
+	repoID := r.URL.Query().Get(":ID")
 	repo, ok := repoStore[repoID]
 
 	if ok {
@@ -205,9 +240,75 @@ func GetRepo(w http.ResponseWriter, r *http.Request) {
 }
 
 func AddRepo(w http.ResponseWriter, r *http.Request) {
+	var ret libocit.HttpRet
+	action := r.URL.Query().Get("Action")
+
+	if action == "Add" {
+		var repo CaseRepo
+		result, _ := ioutil.ReadAll(r.Body)
+		r.Body.Close()
+		json.Unmarshal([]byte(result), &repo)
+		ok, msgs := RepoValid(repo)
+		if ok == false {
+			ret.Status = "Failed"
+			ret.Message = fmt.Sprintf("The repo has %d error(s).", len(msgs))
+			ret.Data = msgs
+		} else {
+			repo.ID = libocit.MD5(path.Join(repo.Name, repo.CaseFolder))
+			repoStore[repo.ID] = &repo
+			ret.Status = "OK"
+		}
+	} else if action == "Refresh" {
+		LoadRepos()
+	} else {
+		ret.Status = "Failed"
+		ret.Message = "The action in AddRepo is limited to Add/Refresh"
+	}
+
+	retInfo, _ := json.MarshalIndent(ret, "", "\t")
+	w.Write([]byte(retInfo))
 }
 
 func ModifyRepo(w http.ResponseWriter, r *http.Request) {
+	var ret libocit.HttpRet
+	repoID := r.URL.Query().Get(":ID")
+	action := r.URL.Query().Get("Action")
+
+	if action == "Modify" {
+		var repo CaseRepo
+		result, _ := ioutil.ReadAll(r.Body)
+		r.Body.Close()
+		json.Unmarshal([]byte(result), &repo)
+		ok, msgs := RepoValid(repo)
+		if ok == false {
+			ret.Status = "Failed"
+			ret.Message = fmt.Sprintf("The repo has %d error(s).", len(msgs))
+			ret.Data = msgs
+		} else {
+			if _, ok := repoStore[repoID]; ok {
+				repoStore[repoID] = &repo
+				ret.Status = "OK"
+			} else {
+				ret.Status = "Failed"
+				ret.Message = fmt.Sprintf("The repo %s is not exist.", repo.ID)
+			}
+		}
+	} else if action == "Refresh" {
+		if _, ok := repoStore[repoID]; ok {
+			RefreshRepo(repoID)
+			LoadCasesFromRepo(repoID)
+			ret.Status = "OK"
+		} else {
+			ret.Status = "Failed"
+			ret.Message = fmt.Sprintf("The repo %s is not exist.", repoID)
+		}
+	} else {
+		ret.Status = "Failed"
+		ret.Message = "The action in ModifyRepo is limited to Add/Refresh"
+	}
+
+	retInfo, _ := json.MarshalIndent(ret, "", "\t")
+	w.Write([]byte(retInfo))
 }
 
 func ListCases(w http.ResponseWriter, r *http.Request) {
@@ -239,13 +340,9 @@ func ListCases(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var ret libocit.HttpRet
-	if err != nil {
-		ret.Status = "Failed"
-	} else {
-		ret.Status = "OK"
-		ret.Message = fmt.Sprintf("%d cases founded", len(caseList))
-		ret.Data = caseList
-	}
+	ret.Status = "OK"
+	ret.Message = fmt.Sprintf("%d cases founded", len(caseList))
+	ret.Data = caseList
 
 	retInfo, _ := json.MarshalIndent(ret, "", "\t")
 	w.Write([]byte(retInfo))
@@ -293,20 +390,24 @@ func GetCaseReport(w http.ResponseWriter, r *http.Request) {
 
 func RefreshRepos(w http.ResponseWriter, r *http.Request) {
 	var ret libocit.HttpRet
-	LoadRepos()
 
+	LoadRepos()
 	ret.Status = "OK"
 	retInfo, _ := json.MarshalIndent(ret, "", "\t")
 	w.Write([]byte(retInfo))
 }
 
 func init() {
-	fmt.Println("init")
 	content := libocit.ReadFile("./tcserver.conf")
 	json.Unmarshal([]byte(content), &pub_config)
 	repos := pub_config.Repos
 	for index := 0; index < len(repos); index++ {
-		repoMD := libocit.MD5(repos[index].Name)
+		ok, msgs := RepoValid(repos[index])
+		if (ok == false) && (pub_config.Debug == true) {
+			fmt.Println("The repo ", repos[index], " is invalid. ", msgs)
+			continue
+		}
+		repoMD := libocit.MD5(path.Join(repos[index].Name, repos[index].CaseFolder))
 		repos[index].ID = repoMD
 		repoStore[repoMD] = &repos[index]
 
@@ -317,21 +418,20 @@ func init() {
 func main() {
 	port := fmt.Sprintf(":%d", pub_config.Port)
 	mux := routes.New()
-	mux.Post("/repos", RefreshRepos)
 	mux.Get("/repo", ListRepos)
 	mux.Get("/repo/:ID", GetRepo)
+	//either refresh or add
 	mux.Post("/repo", AddRepo)
-	//Modify, especially enable/disable
+	//either refresh or modify (especially enable/disable)
 	mux.Post("/repo/:ID", ModifyRepo)
 
 	mux.Get("/case", ListCases)
 	mux.Get("/case/:ID", GetCase)
 	mux.Get("/case/:ID/report", GetCaseReport)
 	http.Handle("/", mux)
+	fmt.Println("Listen to port ", port)
 	err := http.ListenAndServe(port, nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
-	} else {
-		fmt.Println("Listen to port ", port)
 	}
 }

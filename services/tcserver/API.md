@@ -29,12 +29,97 @@ The 'Test Case Server' provides all the test cases which stored at github.
 
 |Method|Path|Summary|Description|
 |------|----|------|-----------|
-| GET | `/case` | [List](#list "list") | List the cases. |
-| GET | `/case/:ID` | [Details](#details "details") | Fetch the case files. %caseid.tar.gz |
-| GET | `/case/:ID/report` | [Report] (#report "report") | Get the case report|
-| POST| `/case` | [Refresh](#refresh "refresh") | Refresh the cases. |
 
-###list
+| GET | `/repo` | [List Repos](#list-repos) | List repos. |
+| GET | `/repo/:ID` | [List Repo](#list-repo) | List repo by ID. |
+| POST | `/repo` | [Add a repo, or Refresh repos](#add-a-repo-or-refresh-repos) | Add a repo or refresh all the enabled repos. |
+| POST | `/repo/:ID` | [Modify or refresh a repo](#modify-or-refresh-a-repo) | Modify or refresh a repo by ID. |
+| GET | `/case` | [List cases](#list-cases) | List the cases. |
+| GET | `/case/:ID` | [Get Case](#get-a-case) | Fetch the case files. %caseid.tar.gz |
+| GET | `/case/:ID/report` | [Case Report](#case-report) | Get the case report|
+
+###List Repos
+```
+GET /repo
+```
+List all the repos recorded in the server.
+
+**Parameters**
+
+| *Name* | *Type* | *Description* |
+| -------| ------ | --------- |
+| Page | int | The page number of the test repos, sort by time. Default: 0 |
+| Pagesize | int | The pagesize of the test repos. Default: 10, no more than 100 |
+
+**Response**
+
+```
+{
+        "Status": "OK",
+        "Message": "2 repos founded",
+        "Data": [
+                {
+                        "ID": "2eae7c8a4789c6b174b936e886c1753f",
+                        "Name": "github.com/huawei-openlab/oct-engine",
+                        "CaseFolder": "cases/case-db",
+                        "Enable": false,
+                        "Groups": [
+                                "specstest",
+                                "benchmark/monitor",
+                                "network"
+                        ]
+                },
+                {
+                        "ID": "724eb5049ee0d89c2d805cfa95a3c66c",
+                        "Name": "github.com/liangchenye/oct-case",
+                        "CaseFolder": "casedb",
+                        "Enable": true,
+                        "Groups": [
+                                "oci-spec"
+                        ]
+                }
+        ]
+}
+```
+
+###List Repo
+```
+GET /repo/repo-id
+```
+Get the detailed info of a repo by its ID.
+
+**Response**
+```
+{
+        "Status": "OK",
+        "Message": "",
+        "Data": {
+                "ID": "724eb5049ee0d89c2d805cfa95a3c66c",
+                "Name": "github.com/liangchenye/oct-case",
+                "CaseFolder": "casedb",
+                "Enable": true,
+                "Groups": [
+                        "oci-spec"
+                ]
+        }
+}
+```
+
+###Add a repo or Refresh repos
+```
+POST /repo?Action=Add
+```
+Using 'Action=Add' to add a repo. Using 'Action=Refresh' to refresh all the enabled repos.
+Fill body with repo content.
+
+###Modify or Refresh a repo
+```
+POST /repo/repo-id?Action=Refresh
+```
+Using 'Action=Modify' to modify a repo. Using 'Action=Refresh' to refresh a repo.
+Fill body with repo content in 'Modify' mode.
+
+###List Cases
 ```
 GET /case
 ```
@@ -65,7 +150,7 @@ List the idle/tested test cases.
 ]
 ```
 
-###details
+###Get a case
 
 ```
 GET /case/10100
@@ -76,7 +161,8 @@ Fetch the case files.
 
 The whole %caseid.tar.gz file.
 
-###report
+
+###Case Report
 
 ```
 GET /case/10100/report
@@ -86,22 +172,6 @@ Fetch the case report.
 **Response**
 
 The whole %caseid-report file.
-
-
-###refresh
-```
-POST /case
-```
-Refresh the test cases.
-
-**Response**
-
-```
- {
-    "Status": "OK",
-    "Message": ""
- }
-```
 
 ##Attributes
 
