@@ -22,6 +22,13 @@ func (dc DockerContainer) Build() bool {
 }
 
 func (dc DockerContainer) Pull() bool {
+	cmd := fmt.Sprintf("docker pull %s", dc.Name)
+	fmt.Println("Docker build: ", cmd)
+
+	os.Chdir(dc.BuildDir)
+	c := exec.Command("/bin/sh", "-c", cmd)
+	c.Run()
+
 	return true
 }
 

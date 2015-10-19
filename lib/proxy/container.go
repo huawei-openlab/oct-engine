@@ -45,7 +45,7 @@ func ContainerNew(value string) (Container, bool) {
 		docker := DockerContainer{cc}
 		return docker, valid
 	case "oci":
-		oci := OCIContainer{cc}
+		oci := OCIContainerNew(cc)
 		return oci, valid
 	case "rkt":
 		rkt := RKTContainer{cc}
