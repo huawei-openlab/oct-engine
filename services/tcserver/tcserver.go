@@ -118,47 +118,42 @@ func LastModified(case_dir string) (last_modified int64) {
 func LoadCase(repoID string, groupDir string, caseName string) {
 	caseDir := path.Join(groupDir, caseName)
 	fmt.Println("caseDir ", caseDir)
-	_, err_msgs := libocit.ValidateByDir(caseDir, "")
-	if len(err_msgs) == 0 {
-		last_modified := LastModified(caseDir)
-		caseMD := libocit.MD5(caseDir)
-		if v, ok := caseStore[caseMD]; ok {
-			//Happen when we refresh the repo
-			(*v).LastModifiedTime = last_modified
-			fi, err := os.Stat(path.Join(caseDir, "report.md"))
-			if err != nil {
-				(*v).TestedTime = 0
-			} else {
-				(*v).TestedTime = fi.ModTime().Unix()
-			}
-			if (*v).LastModifiedTime > (*v).TestedTime {
-				(*v).Status = "idle"
-			} else {
-				(*v).Status = "tested"
-			}
+	//	_, err_msgs := libocit.ValidateByDir(caseDir, "")
+	last_modified := LastModified(caseDir)
+	caseMD := libocit.MD5(caseDir)
+	if v, ok := caseStore[caseMD]; ok {
+		//Happen when we refresh the repo
+		(*v).LastModifiedTime = last_modified
+		fi, err := os.Stat(path.Join(caseDir, "report.md"))
+		if err != nil {
+			(*v).TestedTime = 0
 		} else {
-			var tc Case
-			tc.ID = caseMD
-			tc.RepoID = repoID
-			tc.Name = caseName
-			tc.GroupDir = groupDir
-			fi, err := os.Stat(path.Join(caseDir, "report.md"))
-			if err != nil {
-				tc.TestedTime = 0
-			} else {
-				tc.TestedTime = fi.ModTime().Unix()
-			}
-			tc.LastModifiedTime = last_modified
-			if tc.LastModifiedTime > tc.TestedTime {
-				tc.Status = "idle"
-			} else {
-				tc.Status = "tested"
-			}
-			caseStore[caseMD] = &tc
+			(*v).TestedTime = fi.ModTime().Unix()
+		}
+		if (*v).LastModifiedTime > (*v).TestedTime {
+			(*v).Status = "idle"
+		} else {
+			(*v).Status = "tested"
 		}
 	} else {
-		fmt.Println("Error in loading case: ", caseDir, " . Skip it")
-		return
+		var tc Case
+		tc.ID = caseMD
+		tc.RepoID = repoID
+		tc.Name = caseName
+		tc.GroupDir = groupDir
+		fi, err := os.Stat(path.Join(caseDir, "report.md"))
+		if err != nil {
+			tc.TestedTime = 0
+		} else {
+			tc.TestedTime = fi.ModTime().Unix()
+		}
+		tc.LastModifiedTime = last_modified
+		if tc.LastModifiedTime > tc.TestedTime {
+			tc.Status = "idle"
+		} else {
+			tc.Status = "tested"
+		}
+		caseStore[caseMD] = &tc
 	}
 }
 

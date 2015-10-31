@@ -1,0 +1,20 @@
+{ "Name": "bundle test",
+  "Summary": "the bundle test of OCI, should updated after repo",
+  "Version": "0.1",
+  "License": "Apache2.0",
+  "Group": "spec",
+  "Owner": "liangchenye@huawei.com",
+  "Description": "used to test bundle",
+  "Units": [
+		{"Name": "hostA",
+		 "Class": "os",
+		 "Distribution": "Ubuntu",
+		 "Version": "14.04",	
+		 "Commands": {
+			"Deploy": "ls",
+			"Run": "ls",
+			"Collect": "ls"
+		 }
+		} 
+	]
+}

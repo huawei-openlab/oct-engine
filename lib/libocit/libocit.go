@@ -81,6 +81,7 @@ type Collect struct {
 	id string
 }
 
+/*
 type TestCase struct {
 	Name        string
 	Summary     string
@@ -94,6 +95,7 @@ type TestCase struct {
 	Run         []Deploy
 	Collects    []Collect
 }
+*/
 
 type HttpRet struct {
 	Status  string
