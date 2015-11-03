@@ -52,10 +52,10 @@ func TestCaseRepoRefresh(t *testing.T) {
 	}
 }
 
-func TestCaseRepoLoadCases(t *testing.T) {
+func TestCaseRepoGetCases(t *testing.T) {
 	tcr := DemoRepo()
 	tcr.Refresh()
-	cases := tcr.LoadCases()
+	cases := tcr.GetCases()
 	if len(cases) == 2 {
 		t.Log("Load cases successful!")
 	} else {
@@ -63,20 +63,44 @@ func TestCaseRepoLoadCases(t *testing.T) {
 	}
 }
 
-func TestCaseRepoLoadCase(t *testing.T) {
+func TestCaseRepoGetCase(t *testing.T) {
 	tcr := DemoRepo()
 	tcr.Refresh()
-	_, err := tcr.LoadCase("oci-spec/bundle")
+	_, err := tcr.GetCase("oci-spec/bundle")
 	if err == nil {
 		t.Log("Load right case successful!")
 	} else {
 		t.Error("Load right case failed!")
 	}
-	_, err = tcr.LoadCase("oci-spec/bundle-not-exist")
+	_, err = tcr.GetCase("oci-spec/bundle-not-exist")
 	if err != nil {
 		t.Log("Load wrong case successful!")
 	} else {
 		t.Error("Load wrong case failed!")
+	}
+}
+
+func TestCaseRepoSetGetID(t *testing.T) {
+	id := "verystrangeid"
+	tcr := DemoRepo()
+	tcr.SetID(id)
+	if tcr.GetID() == id {
+		t.Log("Repo set/get id successful!")
+	} else {
+		t.Error("Repo set/get id failed!")
+	}
+}
+
+func TestCaseRepoModify(t *testing.T) {
+	var newRepo TestCaseRepo
+	strangeName := "verystrangename"
+	newRepo.Name = strangeName
+	tcr := DemoRepo()
+	tcr.Modify(newRepo)
+	if tcr.Name == strangeName {
+		t.Log("Repo modify succesful!")
+	} else {
+		t.Error("Repo modify failed!")
 	}
 }
 
@@ -86,10 +110,10 @@ func TestCaseRepoPurge(t *testing.T) {
 
 	tcr := DemoRepo()
 	tcr.Purge()
-	cases := tcr.LoadCases()
+	cases := tcr.GetCases()
 	if len(cases) == 0 {
 		t.Log("Repo purge successful!")
 	} else {
-		t.Log("Repo purge failed!")
+		t.Error("Repo purge failed!")
 	}
 }

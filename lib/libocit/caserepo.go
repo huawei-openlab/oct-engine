@@ -11,7 +11,6 @@ import (
 const TestCaseCache string = "/tmp/.testcase_cache/"
 
 type TestCaseRepo struct {
-	ID string
 	//Name is the short name of URL, make the repo management easier
 	Name       string
 	URL        string
@@ -24,6 +23,10 @@ type TestCaseRepo struct {
 
 	//used to get the repo data, default to : /tmp/tcserver_cache/
 	cacheDir string
+	cases    []TestCase
+	//The id is not public since it should be set in the implementation
+	id        string
+	timestamp int64
 }
 
 func (repo *TestCaseRepo) IsValid() (msgs []string, valid bool) {
@@ -54,9 +57,19 @@ func (repo *TestCaseRepo) SetCacheDir(cacheDir string) {
 	}
 }
 
+func (repo *TestCaseRepo) SetID(id string) {
+	if id != repo.id {
+		repo.id = id
+	}
+}
+
+func (repo *TestCaseRepo) GetID() string {
+	return repo.id
+}
+
 func (repo *TestCaseRepo) Refresh() bool {
 	if repo.Enable == false {
-		return true
+		return false
 	}
 	if len(repo.cacheDir) == 0 {
 		repo.cacheDir = TestCaseCache
@@ -80,24 +93,84 @@ func (repo *TestCaseRepo) Refresh() bool {
 		if err != nil {
 			return false
 		}
+		return repo.loadCases()
 	}
 	return true
 }
 
-func (repo *TestCaseRepo) LoadCases() (cases []string) {
+func (repo *TestCaseRepo) Modify(newRepo TestCaseRepo) {
+	changed := false
+	if len(newRepo.Name) > 0 && newRepo.Name != repo.Name {
+		repo.Name = newRepo.Name
+		changed = true
+	}
+	if len(newRepo.URL) > 0 && newRepo.Name != repo.Name {
+		repo.URL = newRepo.URL
+		changed = true
+	}
+	if len(newRepo.CaseFolder) > 0 && newRepo.CaseFolder != repo.CaseFolder {
+		repo.CaseFolder = newRepo.CaseFolder
+		changed = true
+	}
+	if len(newRepo.Type) > 0 && newRepo.Type != newRepo.Type {
+		repo.Type = newRepo.Type
+		changed = true
+	}
+	if newRepo.Enable != repo.Enable {
+		repo.Enable = newRepo.Enable
+		changed = true
+	}
+	//TODO: better comparing
+	if len(newRepo.Groups) > 0 {
+		repo.Groups = newRepo.Groups
+		changed = true
+	}
+
+	if changed {
+		repo.cases = nil
+	}
+}
+
+//True means updated, false, means no changes
+func (repo *TestCaseRepo) loadCases() bool {
+	fileinfo, err := os.Stat(path.Join(repo.cacheDir, repo.URL, repo.CaseFolder))
+	if err != nil {
+		return false
+	}
+	timestamp := fileinfo.ModTime().Unix()
+	if timestamp <= repo.timestamp {
+		return false
+	} else {
+		repo.timestamp = timestamp
+	}
+
+	repo.cases = nil
 	for index := 0; index < len(repo.Groups); index++ {
 		groupDir := path.Join(repo.cacheDir, repo.URL, repo.CaseFolder, repo.Groups[index])
 		files, _ := ioutil.ReadDir(groupDir)
 		for _, file := range files {
-			if file.IsDir() {
-				cases = append(cases, path.Join(repo.Groups[index], file.Name()))
+			if !file.IsDir() {
+				continue
+			}
+			if tc, err := CaseFromBundle(path.Join(groupDir, file.Name())); err != nil {
+				if tc.IsValid() {
+					tc.SetRepoID(repo.id)
+					repo.cases = append(repo.cases, tc)
+				}
 			}
 		}
 	}
-	return cases
+	return true
 }
 
-func (repo *TestCaseRepo) LoadCase(groupAndName string) (tc TestCase, err error) {
+func (repo *TestCaseRepo) GetCases() []TestCase {
+	if repo.Enable {
+		return repo.cases
+	}
+	return nil
+}
+
+func (repo *TestCaseRepo) GetCase(groupAndName string) (tc TestCase, err error) {
 	caseDir := path.Join(repo.cacheDir, repo.URL, repo.CaseFolder, groupAndName)
 	return CaseFromBundle(caseDir)
 }

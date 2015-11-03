@@ -11,6 +11,7 @@ import (
 
 type TestStatus string
 
+//Warning: this is not the test case status,  this is the test status, which is runtime
 const (
 	TestStatusInit      TestStatus = "init"
 	TestStatusAllocated            = "allocated"
@@ -32,7 +33,7 @@ The case should be like this:
        caseA
            |___ case.json
 	   |___ source/
-	   |___ report/
+	   |___ report.md
 */
 
 type TestCase struct {
@@ -47,6 +48,8 @@ type TestCase struct {
 
 	//donnot expose to the public
 	bundleURL string
+	repoID    string
+	id        string
 }
 
 //In this part, all the Unit (with Children) should get the relevant id
@@ -120,6 +123,11 @@ func (tc *TestCase) Free() (msgs []string, succ bool) {
 	return msgs, succ
 }
 
+func (tc *TestCase) IsValid() bool {
+	//TODO
+	return true
+}
+
 func (tc *TestCase) IsStatus(status TestStatus) (succ bool) {
 	for index := 0; index < len(tc.Units); index++ {
 		if tc.Units[index].Status() != status {
@@ -127,6 +135,40 @@ func (tc *TestCase) IsStatus(status TestStatus) (succ bool) {
 		}
 	}
 	return true
+}
+
+func (tc *TestCase) SetID(id string) {
+	if tc.id != id {
+		tc.id = id
+	}
+}
+
+func (tc *TestCase) GetID() string {
+	return tc.id
+}
+
+func (tc *TestCase) SetRepoID(id string) {
+	if tc.repoID != id {
+		tc.repoID = id
+	}
+}
+
+func (tc *TestCase) GetRepoID() string {
+	return tc.repoID
+}
+
+func (tc *TestCase) MatchStatus(status string) bool {
+	hasReport, caseUpdated, err := tc.GetReportStatus()
+	if err != nil {
+		return false
+	}
+	if status == "hasReport" && hasReport {
+		return true
+	}
+	if status == "caseUpdated" && caseUpdated {
+		return true
+	}
+	return false
 }
 
 func CaseFromBundle(bundleURL string) (tc TestCase, err error) {
@@ -143,6 +185,22 @@ func CaseFromBundle(bundleURL string) (tc TestCase, err error) {
 	}
 	tc.bundleURL = bundleURL
 	return tc, nil
+}
+
+func (tc *TestCase) GetBundleURL() string {
+	return tc.bundleURL
+}
+
+func (tc *TestCase) GetBundleContent() string {
+	files := GetDirFiles(tc.bundleURL, "")
+	tmpTarURL := TarFileList(files, tc.bundleURL, "")
+
+	return ReadFile(tmpTarURL)
+}
+
+func (tc *TestCase) GetReportContent() string {
+	reportURL := path.Join(tc.bundleURL, TestCaseReportFile)
+	return ReadFile(reportURL)
 }
 
 func (tc *TestCase) GetReportStatus() (hasReport bool, caseUpdated bool, err error) {
