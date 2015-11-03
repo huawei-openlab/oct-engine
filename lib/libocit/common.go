@@ -147,7 +147,7 @@ func PreparePath(cachename string, filename string) (realurl string) {
 			os.MkdirAll(dir, 0777)
 		}
 	}
-	return realurl
+	return dir
 }
 
 func SendFile(post_url string, file_url string, params map[string]string) (ret HttpRet) {

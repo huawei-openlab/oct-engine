@@ -35,7 +35,9 @@ type TestCase struct {
 	Owner       string
 	Description string
 	Units       []TestUnit
-
+	//This is not necessary, but since the developer names the bundle,
+	//just don't want to miss it
+	BundleName string
 	//donnot expose to the public
 	bundleURL string
 	repoID    string
@@ -180,6 +182,16 @@ func CaseFromBundle(bundleURL string) (tc TestCase, err error) {
 
 func (tc *TestCase) GetBundleURL() string {
 	return tc.bundleURL
+}
+
+func (tc *TestCase) SetBundleName(bundle string) {
+	if bundle != tc.BundleName {
+		tc.BundleName = bundle
+	}
+}
+
+func (tc *TestCase) GetBundleName() string {
+	return tc.BundleName
 }
 
 func (tc *TestCase) GetBundleContent() string {

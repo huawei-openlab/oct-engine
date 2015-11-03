@@ -178,6 +178,7 @@ func RefreshRepo(repo libocit.TestCaseRepo) {
 		for index := 0; index < len(cases); index++ {
 			fmt.Println("case loaded ", cases[index])
 			cases[index].SetID(libocit.MD5(cases[index].GetBundleURL()))
+			cases[index].SetBundleName(path.Base(cases[index].GetBundleURL()))
 			caseStore[cases[index].GetID()] = cases[index]
 		}
 	}

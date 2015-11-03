@@ -13,7 +13,8 @@ type TestTask struct {
 	Priority  int
 }
 
-func TestTaskNew(postURL string, bundleURL string, prio int) (task TestTask) {
+func TestTaskNew(id string, postURL string, bundleURL string, prio int) (task TestTask) {
+	task.ID = id
 	task.PostURL = postURL
 	task.BundleURL = bundleURL
 	task.Status = TestStatusInit
@@ -22,10 +23,14 @@ func TestTaskNew(postURL string, bundleURL string, prio int) (task TestTask) {
 	return task
 }
 
-func (task *TestTask) Init() (id string, ret HttpRet) {
-	if task.Status == TestStatusInit {
+func (task *TestTask) Run() (needContinue bool) {
+	needContinue = false
+	switch task.Status {
+	case TestStatusInit:
 		task.Status = TestStatusAllocating
-		ret = SendFile(task.PostURL, task.BundleURL, nil)
+		params := make(map[string]string)
+		params[TestActionID] = task.ID
+		ret := SendFile(task.PostURL, task.BundleURL, params)
 		if ret.Status == RetStatusOK {
 			//FIXME: use message to mean id is not a good idea
 			task.ID = ret.Message
@@ -34,13 +39,6 @@ func (task *TestTask) Init() (id string, ret HttpRet) {
 		} else {
 			task.Status = TestStatusAllocateFailed
 		}
-	}
-	return task.ID, ret
-}
-
-func (task *TestTask) Run() (needContinue bool) {
-	needContinue = false
-	switch task.Status {
 	case TestStatusAllocated:
 		task.Status = TestStatusDeploying
 		ret := SendCommand(task.PostURL, []byte(TestActionDeploy))
