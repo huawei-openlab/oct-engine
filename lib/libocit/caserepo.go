@@ -1,7 +1,7 @@
 package libocit
 
 import (
-	//"fmt"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -11,6 +11,8 @@ import (
 const TestCaseCache string = "/tmp/.testcase_cache/"
 
 type TestCaseRepo struct {
+	//set in runtime implementation
+	ID string
 	//Name is the short name of URL, make the repo management easier
 	Name       string
 	URL        string
@@ -25,7 +27,6 @@ type TestCaseRepo struct {
 	cacheDir string
 	cases    []TestCase
 	//The id is not public since it should be set in the implementation
-	id        string
 	timestamp int64
 }
 
@@ -58,13 +59,13 @@ func (repo *TestCaseRepo) SetCacheDir(cacheDir string) {
 }
 
 func (repo *TestCaseRepo) SetID(id string) {
-	if id != repo.id {
-		repo.id = id
+	if id != repo.ID {
+		repo.ID = id
 	}
 }
 
 func (repo *TestCaseRepo) GetID() string {
-	return repo.id
+	return repo.ID
 }
 
 func (repo *TestCaseRepo) Refresh() bool {
@@ -152,9 +153,10 @@ func (repo *TestCaseRepo) loadCases() bool {
 			if !file.IsDir() {
 				continue
 			}
-			if tc, err := CaseFromBundle(path.Join(groupDir, file.Name())); err != nil {
+			if tc, err := CaseFromBundle(path.Join(groupDir, file.Name())); err == nil {
+				fmt.Println("Case: ", file.Name(), " added")
 				if tc.IsValid() {
-					tc.SetRepoID(repo.id)
+					tc.SetRepoID(repo.ID)
 					repo.cases = append(repo.cases, tc)
 				}
 			}

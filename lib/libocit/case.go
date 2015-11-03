@@ -37,6 +37,8 @@ The case should be like this:
 */
 
 type TestCase struct {
+	//set in runtime implementation
+	ID          string
 	Name        string
 	Summary     string
 	Version     string
@@ -49,7 +51,6 @@ type TestCase struct {
 	//donnot expose to the public
 	bundleURL string
 	repoID    string
-	id        string
 }
 
 //In this part, all the Unit (with Children) should get the relevant id
@@ -138,13 +139,13 @@ func (tc *TestCase) IsStatus(status TestStatus) (succ bool) {
 }
 
 func (tc *TestCase) SetID(id string) {
-	if tc.id != id {
-		tc.id = id
+	if tc.ID != id {
+		tc.ID = id
 	}
 }
 
 func (tc *TestCase) GetID() string {
-	return tc.id
+	return tc.ID
 }
 
 func (tc *TestCase) SetRepoID(id string) {
@@ -158,6 +159,9 @@ func (tc *TestCase) GetRepoID() string {
 }
 
 func (tc *TestCase) MatchStatus(status string) bool {
+	if len(status) == 0 {
+		return true
+	}
 	hasReport, caseUpdated, err := tc.GetReportStatus()
 	if err != nil {
 		return false
@@ -173,7 +177,6 @@ func (tc *TestCase) MatchStatus(status string) bool {
 
 func CaseFromBundle(bundleURL string) (tc TestCase, err error) {
 	configURL := path.Join(bundleURL, TestCaseConfigFile)
-
 	cf, err := os.Open(configURL)
 	if err != nil {
 		return tc, err

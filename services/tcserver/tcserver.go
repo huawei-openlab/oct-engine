@@ -102,6 +102,7 @@ func AddRepo(w http.ResponseWriter, r *http.Request) {
 		for _, repoInStore := range repoStore {
 			RefreshRepo(repoInStore)
 		}
+		ret.Status = "OK"
 	} else {
 		ret.Status = "Failed"
 		ret.Message = "The action in AddRepo is limited to Add/Refresh"
@@ -175,6 +176,7 @@ func RefreshRepo(repo libocit.TestCaseRepo) {
 		CleanRepo(repo)
 		cases := repo.GetCases()
 		for index := 0; index < len(cases); index++ {
+			fmt.Println("case loaded ", cases[index])
 			cases[index].SetID(libocit.MD5(cases[index].GetBundleURL()))
 			caseStore[cases[index].GetID()] = cases[index]
 		}
@@ -237,9 +239,9 @@ func GetCase(w http.ResponseWriter, r *http.Request) {
 	if len(value) > 0 {
 		//FIXME: add the error to head
 		w.Write([]byte(value))
+	} else {
+		w.Write([]byte("Cannot get the case."))
 	}
-
-	w.Write([]byte("Cannot get the case."))
 }
 
 func GetCaseReport(w http.ResponseWriter, r *http.Request) {
