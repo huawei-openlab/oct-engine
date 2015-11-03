@@ -6,6 +6,40 @@ import (
 	"encoding/json"
 )
 
+type TestStatus string
+
+//Warning: this is not the test case status,  this is the test status, which is runtime
+const (
+	TestStatusInit           TestStatus = "init"
+	TestStatusAllocating                = "allocating"
+	TestStatusAllocated                 = "allocated"
+	TestStatusAllocateFailed            = "allocate failed"
+	TestStatusDeploying                 = "deploying"
+	TestStatusDeployed                  = "deployed"
+	TestStatusDeployFailed              = "deploy failed"
+	TestStatusRunning                   = "running"
+	TestStatusRun                       = "run"
+	TestStatusRunFailed                 = "run failed"
+	TestStatusCollecting                = "collecting"
+	TestStatusCollected                 = "collect"
+	TestStatusCollectFailed             = "collect failed"
+	TestStatusDestroying                = "destroying"
+	TestStatusFinish                    = "finish"
+	TestStatusDestroyFailed             = "destroy failed"
+)
+
+type TestAction string
+
+const (
+	TestActionAction  TestAction = "action"
+	TestActionID                 = "id"
+	TestActionApply              = "apply"
+	TestActionDeploy             = "deploy"
+	TestActionRun                = "run"
+	TestActionCollect            = "collect"
+	TestActionDestroy            = "destroy"
+)
+
 type TUClass string
 
 const (

@@ -97,8 +97,15 @@ type TestCase struct {
 }
 */
 
+type RetStatus string
+
+const (
+	RetStatusOK     RetStatus = "ok"
+	RetStatusFailed RetStatus = "failed"
+)
+
 type HttpRet struct {
-	Status  string
+	Status  RetStatus
 	Message string
 	Data    interface{}
 }
@@ -150,27 +157,27 @@ func SendFile(post_url string, file_url string, params map[string]string) (ret H
 	//'tcfile': testcase file
 	fileWriter, err := bodyWriter.CreateFormFile("tcfile", filename)
 	if err != nil {
-		ret.Status = "Failed"
-		ret.Message = "error writing to buffer"
+		ret.Status = RetStatusFailed
+		ret.Message = err.Error()
 		return ret
 	}
 	_, err = os.Stat(file_url)
 	if err != nil {
-		ret.Status = "Failed"
-		ret.Message = "error in stat file " + file_url
+		ret.Status = RetStatusFailed
+		ret.Message = err.Error()
 		return ret
 	}
 
 	fh, err := os.Open(file_url)
 	if err != nil {
-		ret.Status = "Failed"
-		ret.Message = "error in open file " + file_url
+		ret.Status = RetStatusFailed
+		ret.Message = err.Error()
 		return ret
 	}
 	_, err = io.Copy(fileWriter, fh)
 	if err != nil {
-		ret.Status = "Failed"
-		ret.Message = "error in copy file " + file_url
+		ret.Status = RetStatusFailed
+		ret.Message = err.Error()
 		return ret
 	}
 
@@ -183,25 +190,25 @@ func SendFile(post_url string, file_url string, params map[string]string) (ret H
 	bodyWriter.Close()
 	request, err := http.NewRequest("POST", post_url, bodyBuf)
 	if err != nil {
-		ret.Status = "Failed"
-		ret.Message = "error in get new request"
+		ret.Status = RetStatusFailed
+		ret.Message = err.Error()
 		return ret
 	}
 	request.Header.Set("Content-Type", bodyWriter.FormDataContentType())
 	client := &http.Client{}
 	resp, err := client.Do(request)
 	if err != nil {
-		ret.Status = "Failed"
-		ret.Message = "error in send new request"
+		ret.Status = RetStatusFailed
+		ret.Message = err.Error()
 		return ret
 	}
 	defer resp.Body.Close()
 	resp_body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		ret.Status = "Failed"
-		ret.Message = "error in reading response"
+		ret.Status = RetStatusFailed
+		ret.Message = err.Error()
 	} else {
-		ret.Status = "OK"
+		ret.Status = RetStatusOK
 		ret.Message = string(resp_body)
 	}
 	return ret
@@ -213,13 +220,13 @@ func SendCommand(apiurl string, b []byte) (ret HttpRet) {
 	resp, perr := http.Post(apiurl, "application/json;charset=utf-8", body)
 	if perr != nil {
 		fmt.Println(perr)
-		ret.Status = "Failed"
-		ret.Message = "err in posting"
+		ret.Status = RetStatusFailed
+		ret.Message = perr.Error()
 	} else {
 		result, berr := ioutil.ReadAll(resp.Body)
 		if berr != nil {
-			ret.Status = "Failed"
-			ret.Message = "err in reading the response of the posting"
+			ret.Status = RetStatusFailed
+			ret.Message = berr.Error()
 		} else {
 			json.Unmarshal([]byte(result), &ret)
 		}

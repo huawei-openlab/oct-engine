@@ -9,18 +9,6 @@ import (
 	"path"
 )
 
-type TestStatus string
-
-//Warning: this is not the test case status,  this is the test status, which is runtime
-const (
-	TestStatusInit      TestStatus = "init"
-	TestStatusAllocated            = "allocated"
-	TestStatusDeploy               = "deploy"
-	TestStatusRun                  = "run"
-	TestStatusCollect              = "collect"
-	TestStatusFinish               = "finish"
-)
-
 const (
 	TestCaseConfigFile = "case.json"
 	TestCaseSourceDir  = "source"
@@ -83,7 +71,7 @@ func (tc *TestCase) Deploy(url string) (msgs []string, succ bool) {
 }
 
 func (tc *TestCase) Run() (msgs []string, succ bool) {
-	if !tc.IsStatus(TestStatusDeploy) {
+	if !tc.IsStatus(TestStatusDeployed) {
 		msgs = append(msgs, "The test case is not well deployed.")
 		return msgs, false
 	}
