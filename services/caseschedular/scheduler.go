@@ -92,6 +92,30 @@ func ListTasks(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func PostTaskAction(w http.ResponseWriter, r *http.Request) {
+	var ret libocit.HttpRet
+	taskID := r.URL.Query().Get(":ID")
+
+	for _, taskInStore := range taskStore {
+		if taskID == taskInStore.ID {
+			if taskInStore.Run() {
+				ret.Status = "OK"
+			} else {
+				ret.Status = "Failed"
+			}
+			ret.Data = taskInStore
+			retInfo, _ := json.MarshalIndent(ret, "", "\t")
+			w.Write([]byte(retInfo))
+			return
+		}
+	}
+
+	ret.Status = "Failed"
+	ret.Message = "Cannot find the task, wrong ID provided"
+	retInfo, _ := json.MarshalIndent(ret, "", "\t")
+	w.Write([]byte(retInfo))
+}
+
 func GetTaskInfo(w http.ResponseWriter, r *http.Request) {
 	var ret libocit.HttpRet
 	taskID := r.URL.Query().Get(":ID")
@@ -160,6 +184,7 @@ func main() {
 	mux := routes.New()
 	mux.Get("/task", ListTasks)
 	mux.Get("/task/:ID", GetTaskInfo)
+	mux.Post("/task/:ID", PostTaskAction)
 	http.Handle("/", mux)
 
 	port := fmt.Sprintf(":%d", pubConfig.Port)

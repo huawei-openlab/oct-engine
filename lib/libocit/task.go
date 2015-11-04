@@ -31,6 +31,7 @@ func (task *TestTask) Run() (needContinue bool) {
 		params := make(map[string]string)
 		params[TestActionID] = task.ID
 		ret := SendFile(task.PostURL, task.BundleURL, params)
+		fmt.Println("Run send file : ", task.PostURL, task.BundleURL)
 		if ret.Status == RetStatusOK {
 			//FIXME: use message to mean id is not a good idea
 			task.ID = ret.Message

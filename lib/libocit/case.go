@@ -5,6 +5,7 @@ package libocit
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path"
 )
@@ -43,94 +44,19 @@ type TestCase struct {
 	repoID    string
 }
 
-//In this part, all the Unit (with Children) should get the relevant id
-func (tc *TestCase) Apply() (msgs []string, succ bool) {
-	succ = true
-	for index := 0; index < len(tc.Units); index++ {
-		if m, ok := tc.Units[index].ApplyResource(); !ok {
-			msgs = append(msgs, m...)
-			succ = false
-			break
-		}
-	}
-	return msgs, succ
-}
-
-func (tc *TestCase) Deploy(url string) (msgs []string, succ bool) {
-	if !tc.IsStatus(TestStatusAllocated) {
-		msgs = append(msgs, "The test case is not well allocated.")
-		return msgs, false
-	}
-	succ = true
-	for index := 0; index < len(tc.Units); index++ {
-		if m, ok := tc.Units[index].Deploy(url); !ok {
-			msgs = append(msgs, m...)
-			succ = false
-			break
-		}
-	}
-	return msgs, succ
-}
-
-func (tc *TestCase) Run() (msgs []string, succ bool) {
-	if !tc.IsStatus(TestStatusDeployed) {
-		msgs = append(msgs, "The test case is not well deployed.")
-		return msgs, false
-	}
-	succ = true
-	for index := 0; index < len(tc.Units); index++ {
-		if m, ok := tc.Units[index].Run(); !ok {
-			msgs = append(msgs, m...)
-			succ = false
-			break
-		}
-	}
-	return msgs, succ
-}
-
-func (tc *TestCase) Collect() (msgs []string, succ bool) {
-	if !tc.IsStatus(TestStatusRun) {
-		msgs = append(msgs, "The test case is not well ran.")
-		return msgs, false
-	}
-	succ = true
-	for index := 0; index < len(tc.Units); index++ {
-		if m, ok := tc.Units[index].Collect(); !ok {
-			msgs = append(msgs, m...)
-			succ = false
-			break
-		}
-	}
-	return msgs, succ
-}
-
-func (tc *TestCase) Free() (msgs []string, succ bool) {
-	for index := 0; index < len(tc.Units); index++ {
-		if m, ok := tc.Units[index].ReleaseResource(); !ok {
-			msgs = append(msgs, m...)
-			succ = false
-		}
-	}
-	return msgs, succ
-}
-
 func (tc *TestCase) IsValid() bool {
 	//TODO
-	return true
-}
-
-func (tc *TestCase) IsStatus(status TestStatus) (succ bool) {
-	for index := 0; index < len(tc.Units); index++ {
-		if tc.Units[index].Status() != status {
-			return false
-		}
-	}
 	return true
 }
 
 func (tc *TestCase) SetID(id string) {
 	if tc.ID != id {
 		tc.ID = id
+	}
+	for index := 0; index < len(tc.Units); index++ {
+		unitID := MD5(fmt.Sprintf("%s%d", id, index))
+		tc.Units[index].SetID(unitID)
+		tc.Units[index].SetTestID(id)
 	}
 }
 
@@ -178,6 +104,12 @@ func CaseFromBundle(bundleURL string) (tc TestCase, err error) {
 	}
 	tc.bundleURL = bundleURL
 	return tc, nil
+}
+
+func (tc *TestCase) SetBundleURL(bundle string) {
+	if bundle != tc.bundleURL {
+		tc.bundleURL = bundle
+	}
 }
 
 func (tc *TestCase) GetBundleURL() string {

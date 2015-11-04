@@ -1,7 +1,7 @@
 package libocit
 
 import (
-	"fmt"
+	//	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -154,7 +154,6 @@ func (repo *TestCaseRepo) loadCases() bool {
 				continue
 			}
 			if tc, err := CaseFromBundle(path.Join(groupDir, file.Name())); err == nil {
-				fmt.Println("Case: ", file.Name(), " added")
 				if tc.IsValid() {
 					tc.SetRepoID(repo.ID)
 					repo.cases = append(repo.cases, tc)

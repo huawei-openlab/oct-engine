@@ -15,88 +15,6 @@ import (
 	"path"
 )
 
-type OS struct {
-	CLASS        string
-	ID           string
-	Distribution string
-	Version      string
-	Arch         string
-	CPU          int64
-	Memory       int64
-	IP           string
-	Status       string
-	Object       string
-}
-
-type Task struct {
-	ID     string
-	TC     TestCase
-	OSList []OS
-
-	// HostMap[deploy.objectName] = OS.ID
-	HostMap map[string]string
-}
-
-//FIXME: id need to restruct to a map in task
-type Deploy struct {
-	Object     string
-	Class      string
-	Cmd        string
-	Files      []string
-	Containers []Container
-	//if it was hostOS, the ID is the host OS ID
-	id string
-}
-
-//FIXME: the type is not consistent
-type OSResource struct {
-	CPU    int
-	Memory string
-	Disk   string
-}
-
-type Require struct {
-	Class        string
-	Type         string
-	Distribution string
-	Version      string
-	Resource     OSResource
-	Files        []string
-}
-
-type Container struct {
-	Object       string
-	Class        string
-	Cmd          string
-	Files        []string
-	Distribution string
-	Version      string
-}
-
-type Collect struct {
-	Object string
-	Files  []string
-
-	//if it was hostOS, the ID is the host OS ID
-	id string
-}
-
-/*
-type TestCase struct {
-	Name        string
-	Summary     string
-	Version     string
-	License     string
-	Group       string
-	Owner       string
-	Description string
-	Requires    []Require
-	Deploys     []Deploy
-	Run         []Deploy
-	Collects    []Collect
-}
-*/
-
 type RetStatus string
 
 const (
@@ -110,22 +28,7 @@ type HttpRet struct {
 	Data    interface{}
 }
 
-//Set the object status, for example, set an HostA to 'running'
-type TestingStatus struct {
-	Object string
-	Status string
-}
-
-type TestingCommand struct {
-	//If it was hostOS, the ID is the hostOS ID
-	ID     string
-	Object string
-	//Status: deploy, run
-	Status  string
-	Command string
-}
-
-//WHen filename is null, we just want to prepare a pure directory
+//When filename is null, we just want to prepare a pure directory
 func PreparePath(cachename string, filename string) (realurl string) {
 	var dir string
 	if filename == "" {

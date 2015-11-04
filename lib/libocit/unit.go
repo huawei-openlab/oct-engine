@@ -4,6 +4,7 @@ package libocit
 
 import (
 	"encoding/json"
+	"fmt"
 )
 
 type TestStatus string
@@ -47,28 +48,52 @@ const (
 	TUContainer         = "container"
 )
 
-type TestUnit struct {
-	//Suggest to name the unit, easier to write/maintain
-	Name string
-	//os or containers
+type Resource struct {
 	Class        TUClass
+	ID           string
 	Distribution string
 	Version      string
+	Arch         string
+	CPU          int64
+	Memory       int64
+}
+
+type TestUnit struct {
+	Resource
+	//Suggest to name the unit, easier to write/maintain, must be different
+	Name string
 
 	//deploy files: script/data
 	Commands TestCommand
 	//FIXME: I don't want to use Children..
-	Children []TestUnit
+	//	Children []TestUnit
 
+	Status TestStatus
+
+	//the id of the unit
+	id string
+	//the id of test task
+	testID string
 	//runtime ID, used to keep track of the relevant hostTest/container
-	id     string
-	status TestStatus
+	resourceID string
+	//TODO: use the test bundle URL, but should put files into a smaller piece
+	bundleURL string
 }
 
 type TestCommand struct {
 	Deploy  string
 	Run     string
 	Collect string
+}
+
+type TestUnitOper interface {
+	Run(TestAction) bool
+	GetStatus() TestStatus
+}
+
+func (tu TestUnit) Run(action TestAction) bool {
+	fmt.Println("Virtual run ", action)
+	return true
 }
 
 type testunit TestUnit
@@ -78,80 +103,58 @@ func (t *TestUnit) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &v); err != nil {
 		return err
 	}
-	v.status = TestStatusInit
+	v.Status = TestStatusInit
 	*t = TestUnit(v)
 	return nil
 
 }
 
-func (tu *TestUnit) ApplyResource() (msgs []string, succ bool) {
-	succ = true
-	if tu.Class == TUOS {
-		//TODO : get from testserver
-		// tu.id =
-	} else if tu.Class == TUContainer {
-		//TODO : get from container pool
+func (t *TestUnit) SetID(id string) {
+	if id != t.id {
+		t.id = id
 	}
-	for index := 0; index < len(tu.Children); index++ {
-		if m, ok := tu.Children[index].ApplyResource(); !ok {
-			msgs = append(msgs, m...)
-			succ = false
-			break
-		}
-	}
-	if len(tu.id) != 0 {
-		tu.status = TestStatusAllocated
-	}
-	return msgs, succ
 }
 
-func (tu *TestUnit) ReleaseResource() (msgs []string, valid bool) {
-	valid = true
-	if len(tu.id) == 0 {
-		return msgs, true
-	}
-	if tu.Class == TUOS {
-		//TODO : get from testserver
-		// tu.id =
-	} else if tu.Class == TUContainer {
-		//TODO : get from container pool
-	}
-	return msgs, valid
+func (t *TestUnit) GetID() string {
+	return t.id
 }
 
-func (tu *TestUnit) Deploy(url string) (msgs []string, succ bool) {
-	for index := 0; index < len(tu.Children); index++ {
-		if m, ok := tu.Children[index].ApplyResource(); !ok {
-			msgs = append(msgs, m...)
-			succ = false
-			break
-		}
+func (t *TestUnit) SetTestID(id string) {
+	if id != t.testID {
+		t.testID = id
 	}
-	return msgs, succ
 }
 
-func (tu *TestUnit) Run() (msgs []string, succ bool) {
-	for index := 0; index < len(tu.Children); index++ {
-		if m, ok := tu.Children[index].Run(); !ok {
-			msgs = append(msgs, m...)
-			succ = false
-			break
-		}
-	}
-	return msgs, succ
+func (t *TestUnit) GetTestID() string {
+	return t.testID
 }
 
-func (tu *TestUnit) Collect() (msgs []string, succ bool) {
-	for index := 0; index < len(tu.Children); index++ {
-		if m, ok := tu.Children[index].Collect(); !ok {
-			msgs = append(msgs, m...)
-			succ = false
-			break
-		}
+func (t *TestUnit) SetResourceID(id string) {
+	if id != t.resourceID {
+		t.resourceID = id
 	}
-	return msgs, succ
 }
 
-func (tu *TestUnit) Status() TestStatus {
-	return tu.status
+func (t *TestUnit) GetResourceID() string {
+	return t.resourceID
+}
+
+func (t *TestUnit) SetBundleURL(url string) {
+	if url != t.bundleURL {
+		t.bundleURL = url
+	}
+}
+
+func (t *TestUnit) GetBundleURL() string {
+	return t.bundleURL
+}
+
+func (t *TestUnit) SetStatus(s TestStatus) {
+	if s != t.Status {
+		t.Status = s
+	}
+}
+
+func (t *TestUnit) GetStatus() TestStatus {
+	return t.Status
 }
