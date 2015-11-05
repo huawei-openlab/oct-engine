@@ -4,7 +4,6 @@ import (
 	"../../lib/libocit"
 	"../../lib/routes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -12,31 +11,6 @@ import (
 	"strconv"
 	"sync"
 )
-
-type TSResource struct {
-	libocit.Resource
-
-	//including the port
-	ID          string
-	URL         string
-	MaxJobs     int
-	TestUnitIDs []string
-}
-
-func (res *TSResource) Valid() error {
-	if res.Class == "" {
-		return errors.New("'Class' required.")
-	} else if res.Distribution == "" {
-		return errors.New("'Distribution' required.")
-	} else if res.Version == "" {
-		return errors.New("'Version' required.")
-	} else if res.Arch == "" {
-		return errors.New("'Arch' required.")
-	} else if res.URL == "" {
-		return errors.New("'URL' required.")
-	}
-	return nil
-}
 
 const TestSchedularCacheDir = "/tmp/.test_schedular_cache"
 
@@ -138,45 +112,10 @@ func GetResourceQuery(r *http.Request) (res TSResource) {
 	return res
 }
 
-func GetResourceList(resQuery TSResource) (ids []string) {
-	for _, res := range ResourceStore {
-		if len(resQuery.Class) > 1 {
-			if resQuery.Class != res.Class {
-				continue
-			}
-		}
-		if len(resQuery.Distribution) > 1 {
-			if resQuery.Distribution != res.Distribution {
-				continue
-			}
-		}
-		if len(resQuery.Version) > 1 {
-			if resQuery.Version != res.Version {
-				continue
-			}
-		}
-		if len(resQuery.Arch) > 1 {
-			if resQuery.Arch != res.Arch {
-				continue
-			}
-		}
-		if resQuery.CPU > res.CPU {
-			log.Println("not enough CPU")
-			continue
-		}
-		if resQuery.Memory > res.Memory {
-			log.Println("not enough Memory")
-			continue
-		}
-		ids = append(ids, res.ID)
-	}
-	return ids
-}
-
 func GetResource(w http.ResponseWriter, r *http.Request) {
 	resQuery := GetResourceQuery(r)
 
-	ids := GetResourceList(resQuery)
+	ids := TSRQueryList(resQuery)
 
 	var ret libocit.HttpRet
 	if len(ids) < 1 {
@@ -187,7 +126,9 @@ func GetResource(w http.ResponseWriter, r *http.Request) {
 		ret.Message = "Find the avaliable resource"
 		var rss []TSResource
 		for index := 0; index < len(ids); index++ {
-			rss = append(rss, ResourceStore[ids[index]])
+			if v, ok := TSRQuery(ids[index]); ok {
+				rss = append(rss, v)
+			}
 		}
 
 		ret.Data = rss
@@ -212,15 +153,12 @@ func PostResource(w http.ResponseWriter, r *http.Request) {
 		ret.Message = err.Error()
 	} else {
 		lock.Lock()
-		id := libocit.MD5(string(result))
-		if _, ok := ResourceStore[id]; ok {
-			ret.Status = libocit.RetStatusFailed
-			ret.Message = "this resource is already exist"
-		} else {
-			res.ID = id
-			ResourceStore[id] = res
+		if TSRAdd(res) {
 			ret.Status = "OK"
 			ret.Message = "Success in adding the resource"
+		} else {
+			ret.Status = libocit.RetStatusFailed
+			ret.Message = "this resource is already exist"
 		}
 		lock.Unlock()
 	}
@@ -232,8 +170,7 @@ func DeleteResource(w http.ResponseWriter, r *http.Request) {
 	var ret libocit.HttpRet
 	id := r.URL.Query().Get("ID")
 	lock.Lock()
-	if _, ok := ResourceStore[id]; ok {
-		delete(ResourceStore, id)
+	if TSRDelete(id) {
 		ret.Status = libocit.RetStatusOK
 		ret.Message = "Success in remove the resource"
 	} else {
@@ -249,12 +186,13 @@ func DeleteResource(w http.ResponseWriter, r *http.Request) {
 func init() {
 }
 
-var ResourceStore map[string]TSResource
-
 var lock = sync.RWMutex{}
 var pub_config TestServerConfig
 
 func main() {
+	test()
+	return
+
 	config_content := libocit.ReadFile("./testserver.conf")
 	json.Unmarshal([]byte(config_content), &pub_config)
 
@@ -272,4 +210,56 @@ func main() {
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
+}
+
+func test() {
+	err := TSRInitFromFile("./servers.conf")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	realURL := "/tmp/.schedular_cache/1446707259/bundle.tar.gz"
+	taskID := "1446707259"
+
+	//TODO
+	//Untar the file and load the case.json
+	content := libocit.ReadCaseFromTar(realURL)
+	fmt.Println(content)
+
+	var tc libocit.TestCase
+	if err = json.Unmarshal([]byte(content), &tc); err != nil {
+		fmt.Println("The testcase is not standard. (.tar.gz or .json)")
+		return
+	}
+
+	tc.SetBundleURL(realURL)
+	task := TSTaskNew(taskID, tc)
+
+	if !task.Run(libocit.TestActionApply) {
+		fmt.Println("Failed in main apply ")
+		return
+	}
+	fmt.Println(task.GetStatus())
+
+	if !task.Run(libocit.TestActionDeploy) {
+		fmt.Println("Failed in main deploy ")
+		return
+	}
+	fmt.Println(task.GetStatus())
+
+	if !task.Run(libocit.TestActionRun) {
+		fmt.Println("Failed in main run ")
+		return
+	}
+	fmt.Println(task.GetStatus())
+	if !task.Run(libocit.TestActionCollect) {
+		fmt.Println("Failed in main collect ")
+		return
+	}
+	fmt.Println(task.GetStatus())
+	if !task.Run(libocit.TestActionDestroy) {
+		fmt.Println("Failed in main destroy ")
+		return
+	}
+	fmt.Println(task.GetStatus())
 }

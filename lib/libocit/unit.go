@@ -4,7 +4,6 @@ package libocit
 
 import (
 	"encoding/json"
-	"fmt"
 )
 
 type TestStatus string
@@ -56,6 +55,8 @@ type Resource struct {
 	Arch         string
 	CPU          int64
 	Memory       int64
+	//Includiing port
+	URL string
 }
 
 type TestUnit struct {
@@ -84,16 +85,6 @@ type TestCommand struct {
 	Deploy  string
 	Run     string
 	Collect string
-}
-
-type TestUnitOper interface {
-	Run(TestAction) bool
-	GetStatus() TestStatus
-}
-
-func (tu TestUnit) Run(action TestAction) bool {
-	fmt.Println("Virtual run ", action)
-	return true
 }
 
 type testunit TestUnit
@@ -147,6 +138,56 @@ func (t *TestUnit) SetBundleURL(url string) {
 
 func (t *TestUnit) GetBundleURL() string {
 	return t.bundleURL
+}
+
+func (t *TestUnit) ChangeStatus(succ bool) bool {
+	switch t.Status {
+	case TestStatusInit:
+		t.Status = TestStatusAllocating
+	case TestStatusAllocating:
+		if succ {
+			t.Status = TestStatusAllocated
+
+		} else {
+			t.Status = TestStatusAllocateFailed
+		}
+	case TestStatusAllocated:
+		t.Status = TestStatusDeploying
+	case TestStatusDeploying:
+		if succ {
+			t.Status = TestStatusDeployed
+		} else {
+			t.Status = TestStatusDeployFailed
+		}
+	case TestStatusDeployed:
+		t.Status = TestStatusRunning
+	case TestStatusRunning:
+		if succ {
+			t.Status = TestStatusRun
+		} else {
+			t.Status = TestStatusRunFailed
+		}
+	case TestStatusRun:
+		t.Status = TestStatusCollecting
+	case TestStatusCollecting:
+		if succ {
+			t.Status = TestStatusCollected
+		} else {
+			t.Status = TestStatusCollectFailed
+		}
+	case TestStatusCollected:
+		t.Status = TestStatusDestroying
+	case TestStatusDestroying:
+		if succ {
+			t.Status = TestStatusFinish
+		} else {
+			t.Status = TestStatusDestroyFailed
+		}
+	default:
+		return false
+
+	}
+	return true
 }
 
 func (t *TestUnit) SetStatus(s TestStatus) {
