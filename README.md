@@ -14,7 +14,7 @@ The oct-engine provides the framework for the open container testing.
     The Open Test Server provides RESTful API for user who wants to use a certain operating system on a certain architecture. 
     The Open Test Server acts as an agent to deliver requests to different cluster or IASS platform.
     
-  * `TestCase Scheduler` :  
+  * `Testing Scheduler` :  
     As the main scheduler, the Test Case Scheduler will:
     1. Parse the testing request
     2. Apply hardware resources from the Open Test Server
@@ -23,8 +23,8 @@ The oct-engine provides the framework for the open container testing.
     5. Run the test
     6. Collect and publish the testing report
    
-  * `Test Case Server` :  
-    The Test Case Server provides RESTful API for user to list/get the test cases.
+  * `Case Manager` :  
+    The Case Manager provides RESTful API for user to list/get the test cases, and send testing request to the `Scheduler`.
     It uses the github as the static test case database.
     
 ## TestCase specification
@@ -75,15 +75,12 @@ to get a first impression of the OCT-engine.
 git clone https://github.com/huawei-openlab/oct-engine.git
 cd oct-engine/services
 make
-cd testserver
-./testserver &
+cd scheduler
+./scheduler &
 cd ../ocitd
-./ocitd &
-cd ../scheduler/democase
-tar czvf ../democase.tar.gz *
-cd ..
+cd ../casemanager
 # choose a testcase.
-./scheduler democase.tar.gz
+./casemanager
 ```
 
 ### Quick look of the testing report
