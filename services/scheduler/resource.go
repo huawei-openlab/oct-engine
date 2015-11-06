@@ -20,7 +20,7 @@ type Resource struct {
 	Memory       int64
 }
 */
-type TSResource struct {
+type SchedulerResource struct {
 	libocit.Resource
 
 	ID string
@@ -29,9 +29,9 @@ type TSResource struct {
 	TestUnitIDs []string
 }
 
-var ResourceStore map[string]TSResource
+var ResourceStore map[string]SchedulerResource
 
-func (res *TSResource) Valid() error {
+func (res *SchedulerResource) Valid() error {
 	if res.Class == "" {
 		return errors.New("'Class' required.")
 	} else if res.Distribution == "" {
@@ -46,7 +46,7 @@ func (res *TSResource) Valid() error {
 	return nil
 }
 
-func (res *TSResource) GenerateID() string {
+func (res *SchedulerResource) GenerateID() string {
 	if val, err := json.Marshal(res); err == nil {
 		res.ID = libocit.MD5(string(val))
 		fmt.Println("generated id ", res.ID)
@@ -56,7 +56,7 @@ func (res *TSResource) GenerateID() string {
 	return res.ID
 }
 
-func (res *TSResource) Match(unit libocit.TestUnit) bool {
+func (res *SchedulerResource) Match(unit libocit.TestUnit) bool {
 	if unit.Distribution != res.Distribution {
 		return false
 	}
@@ -77,7 +77,7 @@ func (res *TSResource) Match(unit libocit.TestUnit) bool {
 	return true
 }
 
-func (res *TSResource) Allocate(unit libocit.TestUnit) bool {
+func (res *SchedulerResource) Allocate(unit libocit.TestUnit) bool {
 	if res.MaxJobs == 0 || res.MaxJobs > len(res.TestUnitIDs) {
 		res.TestUnitIDs = append(res.TestUnitIDs, unit.GetID())
 		return true
@@ -85,7 +85,7 @@ func (res *TSResource) Allocate(unit libocit.TestUnit) bool {
 	return false
 }
 
-func TSRApply(unit libocit.TestUnit) string {
+func SchedulerRApply(unit libocit.TestUnit) string {
 	for id, res := range ResourceStore {
 		if res.Match(unit) {
 			res.Allocate(unit)
@@ -95,7 +95,7 @@ func TSRApply(unit libocit.TestUnit) string {
 	return ""
 }
 
-func TSRQueryList(resQuery TSResource) (ids []string) {
+func SchedulerRQueryList(resQuery SchedulerResource) (ids []string) {
 	fmt.Println(resQuery)
 	for id, res := range ResourceStore {
 		if len(resQuery.Class) > 1 {
@@ -131,14 +131,14 @@ func TSRQueryList(resQuery TSResource) (ids []string) {
 	return ids
 }
 
-func TSRQuery(id string) (TSResource, bool) {
-	fmt.Println("TSRQuery", id)
+func SchedulerRQuery(id string) (SchedulerResource, bool) {
+	fmt.Println("SchedulerRQuery", id)
 	fmt.Println(ResourceStore)
 	val, ok := ResourceStore[id]
 	return val, ok
 }
 
-func TSRAdd(res TSResource) bool {
+func SchedulerRAdd(res SchedulerResource) bool {
 	id := res.GenerateID()
 	if _, ok := ResourceStore[id]; ok {
 		return false
@@ -147,7 +147,7 @@ func TSRAdd(res TSResource) bool {
 	return true
 }
 
-func TSRDelete(id string) bool {
+func SchedulerRDelete(id string) bool {
 	if _, ok := ResourceStore[id]; ok {
 		delete(ResourceStore, id)
 		return true
@@ -155,12 +155,12 @@ func TSRDelete(id string) bool {
 	return false
 }
 
-func TSRInit() {
-	ResourceStore = make(map[string]TSResource)
+func SchedulerRInit() {
+	ResourceStore = make(map[string]SchedulerResource)
 }
 
-func TSRInitFromFile(url string) error {
-	TSRInit()
+func SchedulerRInitFromFile(url string) error {
+	SchedulerRInit()
 
 	f, err := os.Open(url)
 	if err != nil {
@@ -168,13 +168,13 @@ func TSRInitFromFile(url string) error {
 	}
 	defer f.Close()
 
-	var rs []TSResource
+	var rs []SchedulerResource
 	if err = json.NewDecoder(f).Decode(&rs); err != nil {
 		return err
 	}
 
 	for index := 0; index < len(rs); index++ {
-		if TSRAdd(rs[index]) {
+		if SchedulerRAdd(rs[index]) {
 			fmt.Println(rs[index])
 		}
 	}

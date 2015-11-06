@@ -5,12 +5,12 @@ import (
 	"fmt"
 )
 
-type TSOSUnit struct {
+type SchedulerOSUnit struct {
 	libocit.TestUnit
 }
 
-func (unit *TSOSUnit) Deploy(id string) bool {
-	res, ok := TSRQuery(id)
+func (unit *SchedulerOSUnit) Deploy(id string) bool {
+	res, ok := SchedulerRQuery(id)
 	if !ok {
 		return false
 	}
@@ -28,8 +28,8 @@ func (unit *TSOSUnit) Deploy(id string) bool {
 	return false
 }
 
-func (unit *TSOSUnit) RunCommand(id string, action libocit.TestAction) bool {
-	res, ok := TSRQuery(id)
+func (unit *SchedulerOSUnit) RunCommand(id string, action libocit.TestAction) bool {
+	res, ok := SchedulerRQuery(id)
 	if !ok {
 		return false
 	}
@@ -46,17 +46,17 @@ func (unit *TSOSUnit) RunCommand(id string, action libocit.TestAction) bool {
 }
 
 //interface function
-func (unit TSOSUnit) GetStatus() libocit.TestStatus {
+func (unit SchedulerOSUnit) GetStatus() libocit.TestStatus {
 	return unit.TestUnit.GetStatus()
 }
 
-func (unit TSOSUnit) Apply() string {
+func (unit SchedulerOSUnit) Apply() string {
 	fmt.Println("OS apply")
-	return TSRApply(unit.TestUnit)
+	return SchedulerRApply(unit.TestUnit)
 }
 
 //interface function
-func (unit TSOSUnit) Run(id string, action libocit.TestAction) bool {
+func (unit SchedulerOSUnit) Run(id string, action libocit.TestAction) bool {
 	fmt.Println("OS run ", id, action)
 	switch action {
 	case libocit.TestActionDeploy:

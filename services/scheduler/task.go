@@ -4,39 +4,39 @@ import (
 	"../../lib/libocit"
 )
 
-type TSUnit interface {
+type SchedulerUnit interface {
 	Apply() string
 	//	Deploy(id string, bundleURL string) bool
 	Run(id string, action libocit.TestAction) bool
 	GetStatus() libocit.TestStatus
 }
 
-type TSTask struct {
+type SchedulerTask struct {
 	//Test Task ID, from the schedular
 	ID    string
 	Case  libocit.TestCase
-	Units []TSUnit
+	Units []SchedulerUnit
 }
 
 //TODO need a task store
-func TSTaskNew(id string, tc libocit.TestCase) (task TSTask) {
+func SchedulerTaskNew(id string, tc libocit.TestCase) (task SchedulerTask) {
 	task.ID = id
 	task.Case = tc
 
 	for index := 0; index < len(tc.Units); index++ {
 		unit := tc.Units[index]
 		if unit.Class == libocit.TUOS {
-			tsunit := TSOSUnit{unit}
+			tsunit := SchedulerOSUnit{unit}
 			tsunit.SetBundleURL(tc.GetBundleURL())
 			task.Units = append(task.Units, tsunit)
 		} else {
-			//			tsunit := TSContainerNew(unit)
+			//			tsunit := SchedulerContainerNew(unit)
 		}
 	}
 	return task
 }
 
-func (task *TSTask) Run(action libocit.TestAction) bool {
+func (task *SchedulerTask) Run(action libocit.TestAction) bool {
 	for index := 0; index < len(task.Units); index++ {
 		//TODO async in the future
 		succ := true
@@ -67,7 +67,7 @@ func (task *TSTask) Run(action libocit.TestAction) bool {
 	return true
 }
 
-func (task *TSTask) GetStatus() libocit.TestStatus {
+func (task *SchedulerTask) GetStatus() libocit.TestStatus {
 	for index := 0; index < len(task.Units); index++ {
 		//TODO: should we make the return value a list?
 		return task.Units[index].GetStatus()

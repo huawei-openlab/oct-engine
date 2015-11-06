@@ -12,9 +12,9 @@ import (
 	"sync"
 )
 
-const TestSchedularCacheDir = "/tmp/.test_schedular_cache"
+const SchedularCacheDir = "/tmp/.test_schedular_cache"
 
-type TestServerConfig struct {
+type SchedulerConfig struct {
 	Port           int
 	ServerListFile string
 	CacheDir       string
@@ -32,7 +32,7 @@ func GetStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func ReceiveTask(w http.ResponseWriter, r *http.Request) {
-	realURL, params := libocit.ReceiveFile(w, r, TestSchedularCacheDir)
+	realURL, params := libocit.ReceiveFile(w, r, SchedularCacheDir)
 	taskID := params["id"]
 
 	//TODO
@@ -57,7 +57,7 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tc.SetBundleURL(realURL)
-	task := TSTaskNew(taskID, tc)
+	task := SchedulerTaskNew(taskID, tc)
 
 	if !task.Run(libocit.TestActionApply) {
 		return
@@ -76,7 +76,7 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetResourceQuery(r *http.Request) (res TSResource) {
+func GetResourceQuery(r *http.Request) (res SchedulerResource) {
 	res.Class = libocit.TUClass(r.URL.Query().Get("Class"))
 	res.Distribution = r.URL.Query().Get("Distribution")
 	res.Version = r.URL.Query().Get("Version")
@@ -115,7 +115,7 @@ func GetResourceQuery(r *http.Request) (res TSResource) {
 func GetResource(w http.ResponseWriter, r *http.Request) {
 	resQuery := GetResourceQuery(r)
 
-	ids := TSRQueryList(resQuery)
+	ids := SchedulerRQueryList(resQuery)
 
 	var ret libocit.HttpRet
 	if len(ids) < 1 {
@@ -124,9 +124,9 @@ func GetResource(w http.ResponseWriter, r *http.Request) {
 	} else {
 		ret.Status = libocit.RetStatusOK
 		ret.Message = "Find the avaliable resource"
-		var rss []TSResource
+		var rss []SchedulerResource
 		for index := 0; index < len(ids); index++ {
-			if v, ok := TSRQuery(ids[index]); ok {
+			if v, ok := SchedulerRQuery(ids[index]); ok {
 				rss = append(rss, v)
 			}
 		}
@@ -139,7 +139,7 @@ func GetResource(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostResource(w http.ResponseWriter, r *http.Request) {
-	var res TSResource
+	var res SchedulerResource
 	var ret libocit.HttpRet
 
 	result, _ := ioutil.ReadAll(r.Body)
@@ -153,7 +153,7 @@ func PostResource(w http.ResponseWriter, r *http.Request) {
 		ret.Message = err.Error()
 	} else {
 		lock.Lock()
-		if TSRAdd(res) {
+		if SchedulerRAdd(res) {
 			ret.Status = "OK"
 			ret.Message = "Success in adding the resource"
 		} else {
@@ -170,7 +170,7 @@ func DeleteResource(w http.ResponseWriter, r *http.Request) {
 	var ret libocit.HttpRet
 	id := r.URL.Query().Get("ID")
 	lock.Lock()
-	if TSRDelete(id) {
+	if SchedulerRDelete(id) {
 		ret.Status = libocit.RetStatusOK
 		ret.Message = "Success in remove the resource"
 	} else {
@@ -187,7 +187,7 @@ func init() {
 }
 
 var lock = sync.RWMutex{}
-var pub_config TestServerConfig
+var pub_config SchedulerConfig
 
 func main() {
 	test()
@@ -213,7 +213,7 @@ func main() {
 }
 
 func test() {
-	err := TSRInitFromFile("./servers.conf")
+	err := SchedulerRInitFromFile("./servers.conf")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -233,7 +233,7 @@ func test() {
 	}
 
 	tc.SetBundleURL(realURL)
-	task := TSTaskNew(taskID, tc)
+	task := SchedulerTaskNew(taskID, tc)
 
 	if !task.Run(libocit.TestActionApply) {
 		fmt.Println("Failed in main apply ")
