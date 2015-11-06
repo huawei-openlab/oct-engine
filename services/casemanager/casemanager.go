@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"path"
 	"strconv"
 )
 
@@ -88,10 +87,13 @@ func AddRepo(w http.ResponseWriter, r *http.Request) {
 			ret.Message = fmt.Sprintf("The repo is invalid.")
 		} else {
 			if msgs, ok := repo.IsValid(); ok {
-				repo.SetID(libocit.MD5(path.Join(repo.Name, repo.CaseFolder)))
-				repoStore[repo.GetID()] = repo
-				ret.Status = "OK"
-				RefreshRepo(repo)
+				if id, ok := libocit.DBAdd(libocit.DBRepo, repo); ok {
+					ret.Status = libocit.RetStatusOK
+					RefreshRepo(id)
+				} else {
+					ret.Status = "Failed"
+					ret.Message = fmt.Sprintf("The repo has %d error(s).", len(msgs))
+				}
 			} else {
 				ret.Status = "Failed"
 				ret.Message = fmt.Sprintf("The repo has %d error(s).", len(msgs))
@@ -99,8 +101,9 @@ func AddRepo(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else if action == "Refresh" {
-		for _, repoInStore := range repoStore {
-			RefreshRepo(repoInStore)
+		ids := libocit.DBLookup(libocit.DBRepo, libocit.DBQuery{})
+		for index := 0; index < len(ids); index++ {
+			RefreshRepo(ids[index])
 		}
 		ret.Status = "OK"
 	} else {
@@ -114,26 +117,17 @@ func AddRepo(w http.ResponseWriter, r *http.Request) {
 
 func ModifyRepo(w http.ResponseWriter, r *http.Request) {
 	var ret libocit.HttpRet
-	var repoPoint *libocit.TestCaseRepo
 	repoID := r.URL.Query().Get(":ID")
 	action := r.URL.Query().Get("Action")
 
-	repoPoint = nil
-	for id, repoInStore := range repoStore {
-		if repoID == id {
-			repoPoint = &repoInStore
-			break
-		}
-	}
-
-	if repoPoint == nil {
+	val, ok := libocit.DBGet(libocit.DBRepo, repoID)
+	if !ok {
 		ret.Status = "Failed"
 		ret.Message = fmt.Sprintf("The repo %s is not exist.", repoID)
 		retInfo, _ := json.MarshalIndent(ret, "", "\t")
 		w.Write([]byte(retInfo))
 		return
 	}
-	repo := *repoPoint
 	if action == "Modify" {
 		//FIXME: The ID should not be changed.
 		var newRepo libocit.TestCaseRepo
@@ -144,13 +138,14 @@ func ModifyRepo(w http.ResponseWriter, r *http.Request) {
 			ret.Status = "Failed"
 			ret.Message = fmt.Sprintf("The modified information is invalid.")
 		} else {
-			repo.Modify(newRepo)
-			repo.SetID(libocit.MD5(path.Join(repo.Name, repo.CaseFolder)))
-			RefreshRepo(repo)
+			oldRepo, _ := libocit.RepoFromString(val.String())
+			oldRepo.Modify(newRepo)
+			libocit.DBModify(libocit.DBRepo, repoID, oldRepo)
+			RefreshRepo(repoID)
 			ret.Status = "OK"
 		}
 	} else if action == "Refresh" {
-		RefreshRepo(repo)
+		RefreshRepo(repoID)
 		ret.Status = "OK"
 	} else {
 		ret.Status = "Failed"
@@ -162,24 +157,28 @@ func ModifyRepo(w http.ResponseWriter, r *http.Request) {
 }
 
 func CleanRepo(repo libocit.TestCaseRepo) {
-	for caseID, tc := range caseStore {
-		caseRepoID := tc.GetRepoID()
-		if len(caseRepoID) > 0 && caseRepoID == repo.GetID() {
-			delete(caseStore, caseID)
-		}
+	var query libocit.DBQuery
+	query.Params = make(map[string]string)
+	query.Params["RepoID"] = repo.GetID()
+	ids := libocit.DBLookup(libocit.DBRepo, query)
+	for index := 0; index < len(ids); index++ {
+		libocit.DBRemove(libocit.DBCase, ids[index])
 	}
 }
 
-//This refresh the 'cache' maintained in tcserver
-func RefreshRepo(repo libocit.TestCaseRepo) {
+//This refresh the 'cache' maintained in casemanager
+func RefreshRepo(id string) {
+	val, ok := libocit.DBGet(libocit.DBRepo, id)
+	if !ok {
+		return
+	}
+	repo, _ := libocit.RepoFromString(val.String())
 	if repo.Refresh() {
 		CleanRepo(repo)
 		cases := repo.GetCases()
 		for index := 0; index < len(cases); index++ {
 			fmt.Println("case loaded ", cases[index])
-			cases[index].SetID(libocit.MD5(cases[index].GetBundleURL()))
-			cases[index].SetBundleName(path.Base(cases[index].GetBundleURL()))
-			caseStore[cases[index].GetID()] = cases[index]
+			libocit.DBAdd(libocit.DBCase, cases[index])
 		}
 	}
 }
@@ -187,8 +186,9 @@ func RefreshRepo(repo libocit.TestCaseRepo) {
 func RefreshRepos(w http.ResponseWriter, r *http.Request) {
 	var ret libocit.HttpRet
 
-	for _, repoInStore := range repoStore {
-		RefreshRepo(repoInStore)
+	ids := libocit.DBLookup(libocit.DBRepo, libocit.DBQuery{})
+	for index := 0; index < len(ids); index++ {
+		RefreshRepo(ids[index])
 	}
 	ret.Status = "OK"
 	retInfo, _ := json.MarshalIndent(ret, "", "\t")
@@ -197,27 +197,30 @@ func RefreshRepos(w http.ResponseWriter, r *http.Request) {
 
 func ListCases(w http.ResponseWriter, r *http.Request) {
 	//Need better explaination of 'status', currently, only hasReport/isUpdated
-	status := r.URL.Query().Get("Status")
+	var query libocit.DBQuery
 	page_string := r.URL.Query().Get("Page")
 	page, err := strconv.Atoi(page_string)
-	if err != nil {
-		page = 0
+	if err == nil {
+		query.Page = page
 	}
 	pageSizeString := r.URL.Query().Get("PageSize")
 	pageSize, err := strconv.Atoi(pageSizeString)
 	if err != nil {
-		pageSize = 10
+		query.PageSize = pageSize
 	}
 
-	var caseList []libocit.TestCase
-	cur_num := 0
+	status := r.URL.Query().Get("Status")
+	if len(status) > 0 {
+		query.Params = make(map[string]string)
+		query.Params["Status"] = status
+	}
+	ids := libocit.DBLookup(libocit.DBCase, query)
 
-	for _, caseInStore := range caseStore {
-		if caseInStore.MatchStatus(status) {
-			cur_num += 1
-			if (cur_num >= page*pageSize) && (cur_num < (page+1)*pageSize) {
-				caseList = append(caseList, caseInStore)
-			}
+	var caseList []libocit.TestCase
+	for index := 0; index < len(ids); index++ {
+		if val, ok := libocit.DBGet(libocit.DBCase, ids[index]); ok {
+			tc, _ := libocit.CaseFromString(val.String())
+			caseList = append(caseList, tc)
 		}
 	}
 
@@ -233,31 +236,35 @@ func ListCases(w http.ResponseWriter, r *http.Request) {
 func GetCase(w http.ResponseWriter, r *http.Request) {
 	//TODO: support another query method : repo/group/name
 	id := r.URL.Query().Get(":ID")
-	tc := caseStore[id]
+	if val, ok := libocit.DBGet(libocit.DBCase, id); ok {
+		tc, _ := libocit.CaseFromString(val.String())
+		value := tc.GetBundleContent()
 
-	value := tc.GetBundleContent()
-
-	if len(value) > 0 {
-		//FIXME: add the error to head
-		w.Write([]byte(value))
-	} else {
-		w.Write([]byte("Cannot get the case."))
+		if len(value) > 0 {
+			//FIXME: add the error to head
+			w.Write([]byte(value))
+			return
+		}
 	}
+	w.Write([]byte("Cannot get the case."))
 }
 
 func GetCaseReport(w http.ResponseWriter, r *http.Request) {
 	var ret libocit.HttpRet
 	id := r.URL.Query().Get(":ID")
-	tc := caseStore[id]
-
-	content := tc.GetReportContent()
-	if len(content) > 0 {
-		ret.Status = "OK"
-		ret.Data = content
-	} else {
-		ret.Status = "Failed"
-		ret.Message = "Cannot find the report"
+	if val, ok := libocit.DBGet(libocit.DBCase, id); ok {
+		tc, _ := libocit.CaseFromString(val.String())
+		content := tc.GetReportContent()
+		if len(content) > 0 {
+			ret.Status = "OK"
+			ret.Data = content
+			retInfo, _ := json.MarshalIndent(ret, "", "\t")
+			w.Write([]byte(retInfo))
+			return
+		}
 	}
+	ret.Status = "Failed"
+	ret.Message = "Cannot find the report"
 
 	retInfo, _ := json.MarshalIndent(ret, "", "\t")
 	w.Write([]byte(retInfo))
@@ -266,7 +273,7 @@ func GetCaseReport(w http.ResponseWriter, r *http.Request) {
 func init() {
 	repoStore = make(map[string]libocit.TestCaseRepo)
 	caseStore = make(map[string]libocit.TestCase)
-	content := libocit.ReadFile("./tcserver.conf")
+	content := libocit.ReadFile("./casemanager.conf")
 	fmt.Println(content)
 	json.Unmarshal([]byte(content), &pub_config)
 	fmt.Println(pub_config)
@@ -277,13 +284,11 @@ func init() {
 			fmt.Println("The repo ", repos[index], " is invalid. ", msgs)
 			continue
 		}
-		repos[index].SetID(libocit.MD5(path.Join(repos[index].Name, repos[index].CaseFolder)))
-		repoStore[repos[index].GetID()] = repos[index]
+		if id, ok := libocit.DBAdd(libocit.DBRepo, repos[index]); ok {
+			RefreshRepo(id)
+		}
 	}
 
-	for _, repoInStore := range repoStore {
-		RefreshRepo(repoInStore)
-	}
 }
 
 func main() {
@@ -300,6 +305,12 @@ func main() {
 	//TODO: add group/name in the future
 	mux.Get("/case/:ID", GetCase)
 	mux.Get("/case/:ID/report", GetCaseReport)
+
+	//Add a new task by the case id
+	mux.Post("/task", AddTask)
+	mux.Get("/task/:ID", GetTaskStatus)
+	mux.Post("/task/:ID", PostTaskAction)
+
 	http.Handle("/", mux)
 	fmt.Println("Listen to port ", port)
 	err := http.ListenAndServe(port, nil)

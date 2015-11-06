@@ -25,9 +25,10 @@ The case should be like this:
 	   |___ report.md
 */
 
-type TestCase struct {
+type TestCasePub struct {
 	//set in runtime implementation
 	ID          string
+	RepoID      string
 	Name        string
 	Summary     string
 	Version     string
@@ -36,12 +37,25 @@ type TestCase struct {
 	Owner       string
 	Description string
 	Units       []TestUnit
+}
+
+type TestCase struct {
+	TestCasePub
 	//This is not necessary, but since the developer names the bundle,
 	//just don't want to miss it
 	BundleName string
 	//donnot expose to the public
-	bundleURL string
-	repoID    string
+	BundleURL string
+}
+
+func (tc TestCase) String() string {
+	val, _ := json.Marshal(tc)
+	return string(val)
+}
+
+func CaseFromString(val string) (tc TestCase, err error) {
+	err = json.Unmarshal([]byte(val), &tc)
+	return tc, err
 }
 
 func (tc *TestCase) IsValid() bool {
@@ -65,13 +79,13 @@ func (tc *TestCase) GetID() string {
 }
 
 func (tc *TestCase) SetRepoID(id string) {
-	if tc.repoID != id {
-		tc.repoID = id
+	if tc.RepoID != id {
+		tc.RepoID = id
 	}
 }
 
 func (tc *TestCase) GetRepoID() string {
-	return tc.repoID
+	return tc.RepoID
 }
 
 func (tc *TestCase) MatchStatus(status string) bool {
@@ -91,8 +105,8 @@ func (tc *TestCase) MatchStatus(status string) bool {
 	return false
 }
 
-func CaseFromBundle(bundleURL string) (tc TestCase, err error) {
-	configURL := path.Join(bundleURL, TestCaseConfigFile)
+func CaseFromBundle(BundleURL string) (tc TestCase, err error) {
+	configURL := path.Join(BundleURL, TestCaseConfigFile)
 	cf, err := os.Open(configURL)
 	if err != nil {
 		return tc, err
@@ -102,18 +116,20 @@ func CaseFromBundle(bundleURL string) (tc TestCase, err error) {
 	if err = json.NewDecoder(cf).Decode(&tc); err != nil {
 		return tc, err
 	}
-	tc.bundleURL = bundleURL
+	tc.BundleURL = BundleURL
+	tc.BundleName = path.Base(tc.BundleURL)
 	return tc, nil
 }
 
 func (tc *TestCase) SetBundleURL(bundle string) {
-	if bundle != tc.bundleURL {
-		tc.bundleURL = bundle
+	if bundle != tc.BundleURL {
+		tc.BundleURL = bundle
+		tc.BundleName = path.Base(tc.BundleURL)
 	}
 }
 
 func (tc *TestCase) GetBundleURL() string {
-	return tc.bundleURL
+	return tc.BundleURL
 }
 
 func (tc *TestCase) SetBundleName(bundle string) {
@@ -127,27 +143,27 @@ func (tc *TestCase) GetBundleName() string {
 }
 
 func (tc *TestCase) GetBundleContent() string {
-	files := GetDirFiles(tc.bundleURL, "")
-	tmpTarURL := TarFileList(files, tc.bundleURL, "")
+	files := GetDirFiles(tc.BundleURL, "")
+	tmpTarURL := TarFileList(files, tc.BundleURL, "")
 
 	return ReadFile(tmpTarURL)
 }
 
 func (tc *TestCase) GetReportContent() string {
-	reportURL := path.Join(tc.bundleURL, TestCaseReportFile)
+	reportURL := path.Join(tc.BundleURL, TestCaseReportFile)
 	return ReadFile(reportURL)
 }
 
 func (tc *TestCase) GetReportStatus() (hasReport bool, caseUpdated bool, err error) {
-	if len(tc.bundleURL) == 0 {
+	if len(tc.BundleURL) == 0 {
 		return false, true, errors.New("Please use a testcase with bundle.")
 	}
-	cfi, err := os.Stat(path.Join(tc.bundleURL, TestCaseConfigFile))
+	cfi, err := os.Stat(path.Join(tc.BundleURL, TestCaseConfigFile))
 	if err != nil {
 		return false, true, errors.New("Critial issue, invalid case bundle")
 	}
 
-	rfi, err := os.Stat(path.Join(tc.bundleURL, TestCaseReportFile))
+	rfi, err := os.Stat(path.Join(tc.BundleURL, TestCaseReportFile))
 	if err != nil {
 		hasReport = false
 		return hasReport, true, nil
@@ -165,7 +181,7 @@ func (tc *TestCase) GetReportStatus() (hasReport bool, caseUpdated bool, err err
 		caseUpdated = false
 	}
 
-	sfi, err := os.Stat(path.Join(tc.bundleURL, TestCaseSourceDir))
+	sfi, err := os.Stat(path.Join(tc.BundleURL, TestCaseSourceDir))
 	if err != nil {
 		return hasReport, caseUpdated, nil
 	}

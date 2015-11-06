@@ -2,6 +2,7 @@ package libocit
 
 import (
 	//	"fmt"
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -10,7 +11,7 @@ import (
 
 const TestCaseCache string = "/tmp/.testcase_cache/"
 
-type TestCaseRepo struct {
+type TestCaseRepoPub struct {
 	//set in runtime implementation
 	ID string
 	//Name is the short name of URL, make the repo management easier
@@ -22,12 +23,25 @@ type TestCaseRepo struct {
 	//We can disable a repo
 	Enable bool
 	Groups []string
+}
 
+type TestCaseRepo struct {
+	TestCaseRepoPub
 	//used to get the repo data, default to : /tmp/tcserver_cache/
-	cacheDir string
-	cases    []TestCase
+	CacheDir string
+	Cases    []TestCase
 	//The id is not public since it should be set in the implementation
-	timestamp int64
+	Timestamp int64
+}
+
+func (repo TestCaseRepo) String() string {
+	val, _ := json.Marshal(repo)
+	return string(val)
+}
+
+func RepoFromString(val string) (tcr TestCaseRepo, err error) {
+	err = json.Unmarshal([]byte(val), &tcr)
+	return tcr, err
 }
 
 func (repo *TestCaseRepo) IsValid() (msgs []string, valid bool) {
@@ -52,9 +66,9 @@ func (repo *TestCaseRepo) IsValid() (msgs []string, valid bool) {
 	return msgs, valid
 }
 
-func (repo *TestCaseRepo) SetCacheDir(cacheDir string) {
-	if repo.cacheDir != cacheDir {
-		repo.cacheDir = cacheDir
+func (repo *TestCaseRepo) SetCacheDir(CacheDir string) {
+	if repo.CacheDir != CacheDir {
+		repo.CacheDir = CacheDir
 	}
 }
 
@@ -72,12 +86,12 @@ func (repo *TestCaseRepo) Refresh() bool {
 	if repo.Enable == false {
 		return false
 	}
-	if len(repo.cacheDir) == 0 {
-		repo.cacheDir = TestCaseCache
+	if len(repo.CacheDir) == 0 {
+		repo.CacheDir = TestCaseCache
 	}
 	if len(repo.Type) == 0 || repo.Type == "git" {
 		var cmd string
-		repoDir := PreparePath(repo.cacheDir, repo.URL)
+		repoDir := PreparePath(repo.CacheDir, repo.URL)
 		git_check_url := path.Join(repoDir, ".git/config")
 		_, err := os.Stat(git_check_url)
 		if err != nil {
@@ -90,7 +104,7 @@ func (repo *TestCaseRepo) Refresh() bool {
 		c := exec.Command("/bin/sh", "-c", cmd)
 		c.Run()
 
-		_, err = os.Stat(path.Join(repo.cacheDir, repo.URL, repo.CaseFolder))
+		_, err = os.Stat(path.Join(repo.CacheDir, repo.URL, repo.CaseFolder))
 		if err != nil {
 			return false
 		}
@@ -128,26 +142,26 @@ func (repo *TestCaseRepo) Modify(newRepo TestCaseRepo) {
 	}
 
 	if changed {
-		repo.cases = nil
+		repo.Cases = nil
 	}
 }
 
 //True means updated, false, means no changes
 func (repo *TestCaseRepo) loadCases() bool {
-	fileinfo, err := os.Stat(path.Join(repo.cacheDir, repo.URL, repo.CaseFolder))
+	fileinfo, err := os.Stat(path.Join(repo.CacheDir, repo.URL, repo.CaseFolder))
 	if err != nil {
 		return false
 	}
-	timestamp := fileinfo.ModTime().Unix()
-	if timestamp <= repo.timestamp {
+	Timestamp := fileinfo.ModTime().Unix()
+	if Timestamp <= repo.Timestamp {
 		return false
 	} else {
-		repo.timestamp = timestamp
+		repo.Timestamp = Timestamp
 	}
 
-	repo.cases = nil
+	repo.Cases = nil
 	for index := 0; index < len(repo.Groups); index++ {
-		groupDir := path.Join(repo.cacheDir, repo.URL, repo.CaseFolder, repo.Groups[index])
+		groupDir := path.Join(repo.CacheDir, repo.URL, repo.CaseFolder, repo.Groups[index])
 		files, _ := ioutil.ReadDir(groupDir)
 		for _, file := range files {
 			if !file.IsDir() {
@@ -156,7 +170,7 @@ func (repo *TestCaseRepo) loadCases() bool {
 			if tc, err := CaseFromBundle(path.Join(groupDir, file.Name())); err == nil {
 				if tc.IsValid() {
 					tc.SetRepoID(repo.ID)
-					repo.cases = append(repo.cases, tc)
+					repo.Cases = append(repo.Cases, tc)
 				}
 			}
 		}
@@ -166,17 +180,17 @@ func (repo *TestCaseRepo) loadCases() bool {
 
 func (repo *TestCaseRepo) GetCases() []TestCase {
 	if repo.Enable {
-		return repo.cases
+		return repo.Cases
 	}
 	return nil
 }
 
 func (repo *TestCaseRepo) GetCase(groupAndName string) (tc TestCase, err error) {
-	caseDir := path.Join(repo.cacheDir, repo.URL, repo.CaseFolder, groupAndName)
+	caseDir := path.Join(repo.CacheDir, repo.URL, repo.CaseFolder, groupAndName)
 	return CaseFromBundle(caseDir)
 }
 
 func (repo *TestCaseRepo) Purge() error {
-	repoDir := path.Join(repo.cacheDir, repo.URL)
+	repoDir := path.Join(repo.CacheDir, repo.URL)
 	return os.RemoveAll(repoDir)
 }

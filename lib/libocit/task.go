@@ -1,6 +1,7 @@
 package libocit
 
 import (
+	"encoding/json"
 	"fmt"
 )
 
@@ -13,6 +14,16 @@ type TestTask struct {
 	Priority  int
 }
 
+func (task TestTask) String() string {
+	val, _ := json.Marshal(task)
+	return string(val)
+}
+
+func TestTaskFromString(val string) (task TestTask, err error) {
+	err = json.Unmarshal([]byte(val), &task)
+	return task, err
+}
+
 func TestTaskNew(id string, postURL string, bundleURL string, prio int) (task TestTask) {
 	task.ID = id
 	task.PostURL = postURL
@@ -21,6 +32,16 @@ func TestTaskNew(id string, postURL string, bundleURL string, prio int) (task Te
 	task.Priority = prio
 
 	return task
+}
+
+func (task *TestTask) SetID(id string) {
+	if id != task.ID {
+		task.ID = id
+	}
+}
+
+func (task *TestTask) GetID() string {
+	return task.ID
 }
 
 func (task *TestTask) Run() (needContinue bool) {
