@@ -3,180 +3,105 @@ package main
 import (
 	"../../lib/libocit"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"log"
-	"os"
+	"io/ioutil"
+	"net/http"
+	"strconv"
+	"sync"
 )
 
-/* Just for refer:
-type Resource struct {
-	Class        TUClass
-	ID           string
-	Distribution string
-	Version      string
-	Arch         string
-	CPU          int64
-	Memory       int64
-}
-*/
-type SchedulerResource struct {
-	libocit.Resource
-
-	ID string
-	//0 means no limit
-	MaxJobs     int
-	TestUnitIDs []string
-}
-
-var ResourceStore map[string]SchedulerResource
-
-func (res *SchedulerResource) Valid() error {
-	if res.Class == "" {
-		return errors.New("'Class' required.")
-	} else if res.Distribution == "" {
-		return errors.New("'Distribution' required.")
-	} else if res.Version == "" {
-		return errors.New("'Version' required.")
-	} else if res.Arch == "" {
-		return errors.New("'Arch' required.")
-	} else if res.URL == "" {
-		return errors.New("'URL' required.")
+func GetResourceQuery(r *http.Request) libocit.DBQuery {
+	var query libocit.DBQuery
+	page_string := r.URL.Query().Get("Page")
+	page, err := strconv.Atoi(page_string)
+	if err == nil {
+		query.Page = page
 	}
-	return nil
+	pageSizeString := r.URL.Query().Get("PageSize")
+	pageSize, err := strconv.Atoi(pageSizeString)
+	if err == nil {
+		query.PageSize = pageSize
+	}
+
+	//TODO: use a list , also add the list to the lib
+	query.Params = make(map[string]string)
+	query.Params["Class"] = r.URL.Query().Get("Class")
+	query.Params["Distribution"] = r.URL.Query().Get("Distribution")
+	query.Params["Version"] = r.URL.Query().Get("Version")
+	query.Params["Arch"] = r.URL.Query().Get("Arch")
+	query.Params["CPU"] = r.URL.Query().Get("CPU")
+	query.Params["Memory"] = r.URL.Query().Get("Memory")
+
+	return query
 }
 
-func (res *SchedulerResource) GenerateID() string {
-	if val, err := json.Marshal(res); err == nil {
-		res.ID = libocit.MD5(string(val))
-		fmt.Println("generated id ", res.ID)
+func GetResource(w http.ResponseWriter, r *http.Request) {
+	query := GetResourceQuery(r)
+
+	ids := libocit.DBLookup(libocit.DBResource, query)
+
+	var ret libocit.HttpRet
+	if len(ids) == 0 {
+		ret.Status = libocit.RetStatusFailed
+		ret.Message = "Cannot find the avaliable resource"
 	} else {
-		fmt.Println("Fatal error in generate id ", err)
-	}
-	return res.ID
-}
-
-func (res *SchedulerResource) Match(unit libocit.TestUnit) bool {
-	if unit.Distribution != res.Distribution {
-		return false
-	}
-	if unit.Version != res.Version {
-		return false
-	}
-	if unit.Arch != res.Arch {
-		return false
-	}
-
-	//TODO: better calculation
-	if unit.CPU > res.CPU {
-		return false
-	}
-	if unit.Memory > res.Memory {
-		return false
-	}
-	return true
-}
-
-func (res *SchedulerResource) Allocate(unit libocit.TestUnit) bool {
-	if res.MaxJobs == 0 || res.MaxJobs > len(res.TestUnitIDs) {
-		res.TestUnitIDs = append(res.TestUnitIDs, unit.GetID())
-		return true
-	}
-	return false
-}
-
-func SchedulerRApply(unit libocit.TestUnit) string {
-	for id, res := range ResourceStore {
-		if res.Match(unit) {
-			res.Allocate(unit)
-			return id
+		ret.Status = libocit.RetStatusOK
+		ret.Message = "Find the avaliable resource"
+		var rss []libocit.DBInterface
+		for index := 0; index < len(ids); index++ {
+			res, _ := libocit.DBGet(libocit.DBResource, ids[index])
+			rss = append(rss, res)
 		}
-	}
-	return ""
-}
 
-func SchedulerRQueryList(resQuery SchedulerResource) (ids []string) {
-	fmt.Println(resQuery)
-	for id, res := range ResourceStore {
-		if len(resQuery.Class) > 1 {
-			if resQuery.Class != res.Class {
-				continue
-			}
-		}
-		if len(resQuery.Distribution) > 1 {
-			if resQuery.Distribution != res.Distribution {
-				continue
-			}
-		}
-		if len(resQuery.Version) > 1 {
-			if resQuery.Version != res.Version {
-				continue
-			}
-		}
-		if len(resQuery.Arch) > 1 {
-			if resQuery.Arch != res.Arch {
-				continue
-			}
-		}
-		if resQuery.CPU > res.CPU {
-			log.Println("not enough CPU")
-			continue
-		}
-		if resQuery.Memory > res.Memory {
-			log.Println("not enough Memory")
-			continue
-		}
-		ids = append(ids, id)
-	}
-	return ids
-}
-
-func SchedulerRQuery(id string) (SchedulerResource, bool) {
-	fmt.Println("SchedulerRQuery", id)
-	fmt.Println(ResourceStore)
-	val, ok := ResourceStore[id]
-	return val, ok
-}
-
-func SchedulerRAdd(res SchedulerResource) bool {
-	id := res.GenerateID()
-	if _, ok := ResourceStore[id]; ok {
-		return false
-	}
-	ResourceStore[id] = res
-	return true
-}
-
-func SchedulerRDelete(id string) bool {
-	if _, ok := ResourceStore[id]; ok {
-		delete(ResourceStore, id)
-		return true
-	}
-	return false
-}
-
-func SchedulerRInit() {
-	ResourceStore = make(map[string]SchedulerResource)
-}
-
-func SchedulerRInitFromFile(url string) error {
-	SchedulerRInit()
-
-	f, err := os.Open(url)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	var rs []SchedulerResource
-	if err = json.NewDecoder(f).Decode(&rs); err != nil {
-		return err
+		ret.Data = rss
 	}
 
-	for index := 0; index < len(rs); index++ {
-		if SchedulerRAdd(rs[index]) {
-			fmt.Println(rs[index])
-		}
-	}
-	return nil
+	body, _ := json.MarshalIndent(ret, "", "\t")
+	w.Write([]byte(body))
 }
+
+func PostResource(w http.ResponseWriter, r *http.Request) {
+	var res SchedulerResource
+	var ret libocit.HttpRet
+
+	result, _ := ioutil.ReadAll(r.Body)
+	r.Body.Close()
+	if pub_config.Debug {
+		fmt.Println(string(result))
+	}
+	json.Unmarshal([]byte(result), &res)
+	if err := res.IsValid(); err != nil {
+		ret.Status = libocit.RetStatusFailed
+		ret.Message = err.Error()
+	} else {
+		lock.Lock()
+		if id, ok := libocit.DBAdd(libocit.DBResource, res); ok {
+			ret.Status = "OK"
+			ret.Message = fmt.Sprintf("Success in adding the resource: %s ", id)
+		} else {
+			ret.Status = libocit.RetStatusFailed
+			ret.Message = "this resource is already exist"
+		}
+		lock.Unlock()
+	}
+	ret_body, _ := json.MarshalIndent(ret, "", "\t")
+	w.Write([]byte(ret_body))
+}
+
+func DeleteResource(w http.ResponseWriter, r *http.Request) {
+	var ret libocit.HttpRet
+	id := r.URL.Query().Get("ID")
+	lock.Lock()
+	if libocit.DBRemove(libocit.DBResource, id) {
+		ret.Status = libocit.RetStatusOK
+		ret.Message = "Success in remove the resource"
+	} else {
+		ret.Status = libocit.RetStatusFailed
+		ret.Message = "Cannot find the resource"
+	}
+	lock.Unlock()
+	ret_body, _ := json.MarshalIndent(ret, "", "\t")
+	w.Write([]byte(ret_body))
+}
+
+var lock = sync.RWMutex{}

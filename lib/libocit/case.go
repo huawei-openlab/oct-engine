@@ -58,9 +58,9 @@ func CaseFromString(val string) (tc TestCase, err error) {
 	return tc, err
 }
 
-func (tc *TestCase) IsValid() bool {
+func (tc *TestCase) IsValid() error {
 	//TODO
-	return true
+	return nil
 }
 
 func (tc *TestCase) SetID(id string) {

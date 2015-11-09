@@ -25,7 +25,7 @@ func SchedulerTaskNew(id string, tc libocit.TestCase) (task SchedulerTask) {
 
 	for index := 0; index < len(tc.Units); index++ {
 		unit := tc.Units[index]
-		if unit.Class == libocit.TUOS {
+		if unit.Class == libocit.ResourceOS {
 			tsunit := SchedulerOSUnit{unit}
 			tsunit.SetBundleURL(tc.GetBundleURL())
 			task.Units = append(task.Units, tsunit)

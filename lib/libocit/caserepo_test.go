@@ -19,17 +19,15 @@ func TestCaseRepoValid(t *testing.T) {
 	var tcr TestCaseRepo
 
 	tcr.Name = "name"
-	_, valid := tcr.IsValid()
-	if valid {
-		t.Error("Valid with wrong repo failed!")
-	} else {
+	if tcr.IsValid() != nil {
 		t.Log("Valid with wrong repo successful!")
+	} else {
+		t.Error("Valid with wrong repo failed!")
 	}
 
 	tcrok := DemoRepo()
 
-	_, valid = tcrok.IsValid()
-	if valid {
+	if tcrok.IsValid() == nil {
 		t.Log("Valid with right repo successful!")
 	} else {
 		t.Error("Valid with right repo failed!")

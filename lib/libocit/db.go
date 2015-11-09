@@ -8,9 +8,10 @@ import (
 type DBCollectName string
 
 const (
-	DBCase DBCollectName = "case"
-	DBRepo               = "repo"
-	DBTask               = "task"
+	DBCase     DBCollectName = "case"
+	DBRepo                   = "repo"
+	DBResource               = "resource"
+	DBTask                   = "task"
 )
 
 type DBInterface interface {
@@ -25,7 +26,8 @@ type DBQuery struct {
 
 var OCTDB map[DBCollectName](map[string]DBInterface)
 
-//The case, repo should be consistent, the task could always be different
+//The case, repo, resource should be consistent
+//The task could always be different
 func DBGenerateID(collect DBCollectName, val string) string {
 	switch collect {
 	case DBCase:

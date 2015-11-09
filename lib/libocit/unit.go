@@ -40,27 +40,8 @@ const (
 	TestActionDestroy            = "destroy"
 )
 
-type TUClass string
-
-const (
-	TUOS        TUClass = "os"
-	TUContainer         = "container"
-)
-
-type Resource struct {
-	Class        TUClass
-	ID           string
-	Distribution string
-	Version      string
-	Arch         string
-	CPU          int64
-	Memory       int64
-	//Includiing port
-	URL string
-}
-
 type TestUnit struct {
-	Resource
+	ResourceCommon
 	//Suggest to name the unit, easier to write/maintain, must be different
 	Name string
 

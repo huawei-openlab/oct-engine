@@ -3,6 +3,7 @@ package libocit
 import (
 	//	"fmt"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -44,26 +45,21 @@ func RepoFromString(val string) (tcr TestCaseRepo, err error) {
 	return tcr, err
 }
 
-func (repo *TestCaseRepo) IsValid() (msgs []string, valid bool) {
-	valid = true
+func (repo *TestCaseRepo) IsValid() error {
 	//If the Name is empty, we can use MD(URL)
 	if len(repo.Name) == 0 {
-		msgs = append(msgs, "Name is empty")
-		valid = false
+		return errors.New("Name is empty")
 	}
 	if len(repo.URL) == 0 {
-		msgs = append(msgs, "URL is empty")
-		valid = false
+		return errors.New("URL is empty")
 	}
 	if len(repo.CaseFolder) == 0 {
-		msgs = append(msgs, "CaseFolder is empty")
-		valid = false
+		return errors.New("CaseFolder is empty")
 	}
 	if len(repo.Groups) == 0 {
-		msgs = append(msgs, "Group is empty")
-		valid = false
+		return errors.New("Group is empty")
 	}
-	return msgs, valid
+	return nil
 }
 
 func (repo *TestCaseRepo) SetCacheDir(CacheDir string) {
@@ -168,7 +164,7 @@ func (repo *TestCaseRepo) loadCases() bool {
 				continue
 			}
 			if tc, err := CaseFromBundle(path.Join(groupDir, file.Name())); err == nil {
-				if tc.IsValid() {
+				if tc.IsValid() == nil {
 					tc.SetRepoID(repo.ID)
 					repo.Cases = append(repo.Cases, tc)
 				}
