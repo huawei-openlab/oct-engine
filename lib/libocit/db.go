@@ -25,7 +25,17 @@ type DBQuery struct {
 
 var OCTDB map[DBCollectName](map[string]DBInterface)
 
-func DBGenerateID(val string) string {
+//The case, repo should be consistent, the task could always be different
+func DBGenerateID(collect DBCollectName, val string) string {
+	switch collect {
+	case DBCase:
+		tc, _ := CaseFromString(val)
+		return MD5(tc.GetBundleContent())
+	case DBRepo:
+		repo, _ := RepoFromString(val)
+		return MD5(fmt.Sprintf("%s%s", repo.URL, repo.CaseFolder))
+	case DBTask:
+	}
 	return MD5(fmt.Sprintf("%d-%s", time.Now().Unix(), val))
 }
 
@@ -65,7 +75,7 @@ func DBAdd(collect DBCollectName, val DBInterface) (string, bool) {
 		return "", false
 	}
 
-	id := DBGenerateID(val.String())
+	id := DBGenerateID(collect, val.String())
 
 	switch collect {
 	case DBCase:

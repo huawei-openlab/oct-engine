@@ -68,3 +68,21 @@ func TestGetReportStatus(t *testing.T) {
 		t.Error("GetReportStatus with nakded spec failed.")
 	}
 }
+
+func TestGetBundleTarURL(t *testing.T) {
+	bundleURL := "./test/bundle-noreport"
+	tc, _ := CaseFromBundle(bundleURL)
+	tarURL := tc.GetBundleTarURL()
+	if tarURL == "./test/bundle-noreport.tar.gz" {
+		t.Log("GetBundleTarURL ok success.")
+	} else {
+		t.Error("GetBundleTarURL ok failed.")
+	}
+
+	_, err := CaseFromTar(tarURL, "./cache/bundle-noreport")
+	if err == nil {
+		t.Log("CaseFromTar ok success.")
+	} else {
+		t.Error("CaseFromTar ok failed.")
+	}
+}

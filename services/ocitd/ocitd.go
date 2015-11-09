@@ -65,7 +65,7 @@ func UploadFile(w http.ResponseWriter, r *http.Request) {
 
 	if val, ok := params["id"]; ok {
 		if strings.HasSuffix(real_url, ".tar.gz") {
-			libocit.UntarFile(path.Join(pub_config.CacheDir, val), real_url)
+			libocit.UntarFile(real_url, path.Join(pub_config.CacheDir, val))
 		}
 		ret.Status = "OK"
 	} else {
@@ -178,7 +178,10 @@ func RegisterToTestServer() {
 
 func main() {
 	content := libocit.ReadFile("./ocitd.conf")
+	pub_config.Port = -2
 	json.Unmarshal([]byte(content), &pub_config)
+
+	fmt.Println(pub_config)
 
 	RegisterToTestServer()
 

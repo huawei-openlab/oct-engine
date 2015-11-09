@@ -143,10 +143,9 @@ func (tc *TestCase) GetBundleName() string {
 }
 
 func (tc *TestCase) GetBundleContent() string {
-	files := GetDirFiles(tc.BundleURL, "")
-	tmpTarURL := TarFileList(files, tc.BundleURL, "")
+	tarURL := tc.GetBundleTarURL()
 
-	return ReadFile(tmpTarURL)
+	return ReadFile(tarURL)
 }
 
 func (tc *TestCase) GetReportContent() string {
@@ -195,6 +194,39 @@ func (tc *TestCase) GetReportStatus() (hasReport bool, caseUpdated bool, err err
 	return hasReport, caseUpdated, nil
 }
 
-//TODO:
-func GetTar() {
+//If cacheURL is nil, tar the bundle in the same dir
+func (tc *TestCase) GetBundleTarURL() string {
+	needUpdate := false
+
+	bfi, err := os.Stat(tc.BundleURL)
+	if err != nil {
+		return ""
+	}
+	tfi, err := os.Stat(fmt.Sprintf("%s.tar.gz", tc.BundleURL))
+	if err != nil {
+		needUpdate = true
+	} else {
+		btimestamp := bfi.ModTime().Unix()
+		ttimestamp := tfi.ModTime().Unix()
+		if btimestamp > ttimestamp {
+			needUpdate = true
+		}
+	}
+
+	if needUpdate {
+		return tc.generateBundleTar()
+	}
+	return fmt.Sprintf("%s.tar.gz", tc.BundleURL)
+}
+
+func (tc *TestCase) generateBundleTar() string {
+	files := GetDirFiles(tc.BundleURL, "")
+	tarURL := TarFileList(files, tc.BundleURL, "")
+	return tarURL
+}
+
+//If bundleURL is nil, untar the bundle in the same dir
+func CaseFromTar(tarURL string, bundleURL string) (TestCase, error) {
+	UntarFile(tarURL, bundleURL)
+	return CaseFromBundle(bundleURL)
 }

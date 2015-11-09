@@ -53,10 +53,10 @@ func PreparePath(cachename string, filename string) (realurl string) {
 	return dir
 }
 
-func SendFile(post_url string, file_url string, params map[string]string) (ret HttpRet) {
+func SendFile(postURL string, fileURL string, params map[string]string) (ret HttpRet) {
 	bodyBuf := &bytes.Buffer{}
 	bodyWriter := multipart.NewWriter(bodyBuf)
-	filename := path.Base(file_url)
+	filename := path.Base(fileURL)
 	//'tcfile': testcase file
 	fileWriter, err := bodyWriter.CreateFormFile("tcfile", filename)
 	if err != nil {
@@ -64,14 +64,14 @@ func SendFile(post_url string, file_url string, params map[string]string) (ret H
 		ret.Message = err.Error()
 		return ret
 	}
-	_, err = os.Stat(file_url)
+	_, err = os.Stat(fileURL)
 	if err != nil {
 		ret.Status = RetStatusFailed
 		ret.Message = err.Error()
 		return ret
 	}
 
-	fh, err := os.Open(file_url)
+	fh, err := os.Open(fileURL)
 	if err != nil {
 		ret.Status = RetStatusFailed
 		ret.Message = err.Error()
@@ -91,7 +91,7 @@ func SendFile(post_url string, file_url string, params map[string]string) (ret H
 	//	contentType := bodyWriter.FormDataContentType()
 
 	bodyWriter.Close()
-	request, err := http.NewRequest("POST", post_url, bodyBuf)
+	request, err := http.NewRequest("POST", postURL, bodyBuf)
 	if err != nil {
 		ret.Status = RetStatusFailed
 		ret.Message = err.Error()
@@ -139,16 +139,16 @@ func SendCommand(apiurl string, b []byte) (ret HttpRet) {
 }
 
 //TODO: add err para?
-func ReadFile(file_url string) (content string) {
-	_, err := os.Stat(file_url)
+func ReadFile(fileURL string) (content string) {
+	_, err := os.Stat(fileURL)
 	if err != nil {
-		fmt.Println("cannot find the file ", file_url)
+		fmt.Println("cannot find the file ", fileURL)
 		return content
 	}
-	file, err := os.Open(file_url)
+	file, err := os.Open(fileURL)
 	defer file.Close()
 	if err != nil {
-		fmt.Println("cannot open the file ", file_url)
+		fmt.Println("cannot open the file ", fileURL)
 		return content
 	}
 	buf := bytes.NewBufferString("")
@@ -158,7 +158,7 @@ func ReadFile(file_url string) (content string) {
 	return content
 }
 
-func ReceiveFile(w http.ResponseWriter, r *http.Request, cache_url string) (real_url string, params map[string]string) {
+func ReceiveFile(w http.ResponseWriter, r *http.Request, cacheURL string) (realURL string, params map[string]string) {
 	r.ParseMultipartForm(32 << 20)
 	file, handler, err := r.FormFile("tcfile")
 
@@ -173,37 +173,37 @@ func ReceiveFile(w http.ResponseWriter, r *http.Request, cache_url string) (real
 
 	if err != nil {
 		fmt.Println("Cannot find the tc file")
-		return real_url, params
+		return realURL, params
 	}
 
 	defer file.Close()
 
 	//Receive to the cache/task_id dir
 	if val, ok := params["id"]; ok {
-		real_url = PreparePath(path.Join(cache_url, val), handler.Filename)
+		realURL = PreparePath(path.Join(cacheURL, val), handler.Filename)
 	} else {
-		real_url = PreparePath(cache_url, handler.Filename)
+		realURL = PreparePath(cacheURL, handler.Filename)
 	}
-	f, err := os.Create(real_url)
+	f, err := os.Create(realURL)
 	if err != nil {
-		fmt.Println("Cannot create the file ", real_url)
+		fmt.Println("Cannot create the file ", realURL)
 		//TODO: better system error
 		http.Error(w, err.Error(), 500)
-		return real_url, params
+		return realURL, params
 	}
 	defer f.Close()
 	io.Copy(f, file)
 
-	return real_url, params
+	return realURL, params
 }
 
 // file name filelist is like this: './source/file'
-func TarFileList(filelist []string, case_dir string, object_name string) (tar_url string) {
-	tar_url = path.Join(case_dir, object_name) + ".tar.gz"
-	fw, err := os.Create(tar_url)
+func TarFileList(filelist []string, case_dir string, object_name string) (tarURL string) {
+	tarURL = path.Join(case_dir, object_name) + ".tar.gz"
+	fw, err := os.Create(tarURL)
 	if err != nil {
 		fmt.Println("Failed in create tar file ", err)
-		return tar_url
+		return tarURL
 	}
 	defer fw.Close()
 	gw := gzip.NewWriter(fw)
@@ -231,7 +231,7 @@ func TarFileList(filelist []string, case_dir string, object_name string) (tar_ur
 		err = tw.WriteHeader(h)
 		_, err = io.Copy(tw, fr)
 	}
-	return tar_url
+	return tarURL
 }
 
 func GetDirFiles(base_dir string, dir string) (files []string) {
@@ -250,14 +250,14 @@ func GetDirFiles(base_dir string, dir string) (files []string) {
 
 }
 
-func TarDir(case_dir string) (tar_url string) {
+func TarDir(case_dir string) (tarURL string) {
 	files := GetDirFiles(case_dir, "")
 	case_name := path.Base(case_dir)
-	tar_url = TarFileList(files, case_dir, case_name)
-	return tar_url
+	tarURL = TarFileList(files, case_dir, case_name)
+	return tarURL
 }
 
-func UntarFile(cache_url string, filename string) {
+func UntarFile(filename string, cacheURL string) {
 	_, err := os.Stat(filename)
 	if err != nil {
 		fmt.Println("cannot find the file ", filename)
@@ -286,8 +286,8 @@ func UntarFile(cache_url string, filename string) {
 		if err != nil {
 			panic(err)
 		}
-		target_url := PreparePath(cache_url, h.Name)
-		fw, err := os.OpenFile(target_url, os.O_CREATE|os.O_WRONLY, os.FileMode(h.Mode))
+		targetURL := PreparePath(cacheURL, h.Name)
+		fw, err := os.OpenFile(targetURL, os.O_CREATE|os.O_WRONLY, os.FileMode(h.Mode))
 		if err != nil {
 			//Dir for example
 			continue
@@ -298,16 +298,16 @@ func UntarFile(cache_url string, filename string) {
 	}
 }
 
-func ReadCaseFromTar(tar_url string) (content string) {
-	_, err := os.Stat(tar_url)
+func ReadCaseFromTar(tarURL string) (content string) {
+	_, err := os.Stat(tarURL)
 	if err != nil {
-		fmt.Println("cannot find the file ", tar_url)
+		fmt.Println("cannot find the file ", tarURL)
 		return content
 	}
 
-	fr, err := os.Open(tar_url)
+	fr, err := os.Open(tarURL)
 	if err != nil {
-		fmt.Println("fail in open file ", tar_url)
+		fmt.Println("fail in open file ", tarURL)
 		return content
 	}
 	defer fr.Close()
@@ -331,10 +331,10 @@ func ReadCaseFromTar(tar_url string) (content string) {
 			var tc TestCase
 			buf := bytes.NewBufferString("")
 			buf.ReadFrom(tr)
-			file_content := buf.String()
-			json.Unmarshal([]byte(file_content), &tc)
+			fileContent := buf.String()
+			json.Unmarshal([]byte(fileContent), &tc)
 			if len(tc.Name) > 1 {
-				content = file_content
+				content = fileContent
 				break
 			} else {
 				continue
@@ -345,17 +345,17 @@ func ReadCaseFromTar(tar_url string) (content string) {
 	return content
 }
 
-//file_url is the default file, suffix is the potential file
-func ReadTar(tar_url string, file_url string, suffix string) (content string) {
-	_, err := os.Stat(tar_url)
+//fileURL is the default file, suffix is the potential file
+func ReadTar(tarURL string, fileURL string, suffix string) (content string) {
+	_, err := os.Stat(tarURL)
 	if err != nil {
-		fmt.Println("cannot find the file ", tar_url)
+		fmt.Println("cannot find the file ", tarURL)
 		return content
 	}
 
-	fr, err := os.Open(tar_url)
+	fr, err := os.Open(tarURL)
 	if err != nil {
-		fmt.Println("fail in open file ", tar_url)
+		fmt.Println("fail in open file ", tarURL)
 		return content
 	}
 	defer fr.Close()
@@ -383,8 +383,8 @@ func ReadTar(tar_url string, file_url string, suffix string) (content string) {
 				break
 			}
 		}
-		if len(file_url) > 0 {
-			if h.Name == file_url {
+		if len(fileURL) > 0 {
+			if h.Name == fileURL {
 				buf := bytes.NewBufferString("")
 				buf.ReadFrom(tr)
 				content = buf.String()

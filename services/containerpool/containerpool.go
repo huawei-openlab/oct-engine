@@ -57,7 +57,7 @@ func UploadFile(w http.ResponseWriter, r *http.Request) {
 	}
 	defer f.Close()
 	io.Copy(f, file)
-	libocit.UntarFile(cache_uri, real_url)
+	libocit.UntarFile(real_url, cache_uri)
 
 	w.Write([]byte("OK"))
 }
