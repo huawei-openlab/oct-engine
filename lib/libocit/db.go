@@ -77,7 +77,7 @@ func DBAdd(collect DBCollectName, val DBInterface) (string, bool) {
 		repo.SetID(id)
 		OCTDB[collect][id] = repo
 	case DBTask:
-		task, _ := TestTaskFromString(val.String())
+		task, _ := TaskFromString(val.String())
 		task.SetID(id)
 		OCTDB[collect][id] = task
 	}
@@ -106,10 +106,27 @@ func DBRemove(collect DBCollectName, id string) bool {
 }
 
 func DBLookup(collect DBCollectName, query DBQuery) (ids []string) {
-	switch collect {
-	case DBCase:
-	case DBRepo:
-	case DBTask:
+	if query.Page < 0 {
+		query.Page = 0
+	}
+	if query.PageSize <= 0 {
+		query.PageSize = 30
+	}
+	i := 0
+	for id, _ := range OCTDB[collect] {
+		fmt.Println(i)
+		fmt.Println(query)
+		fmt.Println(id)
+		if i >= query.Page*query.PageSize && i < (query.Page+1)*query.PageSize {
+			//TODO: check by 'reflect'
+			switch collect {
+			case DBCase:
+			case DBRepo:
+			case DBTask:
+			}
+			ids = append(ids, id)
+		}
+		i++
 	}
 	return ids
 }

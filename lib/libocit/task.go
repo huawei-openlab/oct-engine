@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+const SchedularDefaultPrio = 100
+
 type TestTask struct {
 	ID      string
 	PostURL string
@@ -19,13 +21,12 @@ func (task TestTask) String() string {
 	return string(val)
 }
 
-func TestTaskFromString(val string) (task TestTask, err error) {
+func TaskFromString(val string) (task TestTask, err error) {
 	err = json.Unmarshal([]byte(val), &task)
 	return task, err
 }
 
-func TestTaskNew(id string, postURL string, bundleURL string, prio int) (task TestTask) {
-	task.ID = id
+func TestTaskNew(postURL string, bundleURL string, prio int) (task TestTask) {
 	task.PostURL = postURL
 	task.BundleURL = bundleURL
 	task.Status = TestStatusInit
