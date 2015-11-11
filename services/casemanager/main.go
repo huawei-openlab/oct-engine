@@ -7,31 +7,39 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 )
 
-type TCServerConf struct {
+type CaseManagerConf struct {
 	Repos        []libocit.TestCaseRepo
 	SchedulerURL string
 	Port         int
 	Debug        bool
 }
 
-var pub_config TCServerConf
+var pubConfig CaseManagerConf
 
 func init() {
+	cmf, err := os.Open("casemanager.conf")
+	if err != nil {
+		fmt.Errorf("Cannot find casemanager.conf.")
+		return
+	}
+	defer cmf.Close()
+
+	if err = json.NewDecoder(cmf).Decode(&pubConfig); err != nil {
+		fmt.Errorf("Error in parse casemanager.conf")
+		return
+	}
+
 	libocit.DBRegist(libocit.DBCase)
 	libocit.DBRegist(libocit.DBRepo)
 	libocit.DBRegist(libocit.DBTask)
 
-	content := libocit.ReadFile("./casemanager.conf")
-	fmt.Println(content)
-	json.Unmarshal([]byte(content), &pub_config)
-	fmt.Println(pub_config)
-
-	repos := pub_config.Repos
+	repos := pubConfig.Repos
 	for index := 0; index < len(repos); index++ {
 		if err := repos[index].IsValid(); err != nil {
-			if pub_config.Debug == true {
+			if pubConfig.Debug == true {
 				fmt.Println("The repo ", repos[index], " is invalid. ", err)
 				continue
 			}
@@ -41,7 +49,6 @@ func init() {
 			RefreshRepo(id)
 		}
 	}
-
 }
 
 //TODO: is there any usefull Restful help document lib?
@@ -55,7 +62,7 @@ func GetHelp(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	port := fmt.Sprintf(":%d", pub_config.Port)
+	port := fmt.Sprintf(":%d", pubConfig.Port)
 	mux := routes.New()
 	mux.Get("/", GetHelp)
 	mux.Get("/repo", ListRepos)

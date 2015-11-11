@@ -28,7 +28,7 @@ func AddTask(w http.ResponseWriter, r *http.Request) {
 	tc, _ := libocit.CaseFromString(caseInterface.String())
 
 	bundleURL := tc.GetBundleURL()
-	postURL := pub_config.SchedulerURL
+	postURL := pubConfig.SchedulerURL
 	task := libocit.TestTaskNew(postURL, bundleURL, libocit.SchedularDefaultPrio)
 	if id, ok := libocit.DBAdd(libocit.DBTask, task); ok {
 		ret.Status = libocit.RetStatusOK
