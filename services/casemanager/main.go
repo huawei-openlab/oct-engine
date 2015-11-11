@@ -30,10 +30,11 @@ func init() {
 
 	repos := pub_config.Repos
 	for index := 0; index < len(repos); index++ {
-		msgs, ok := repos[index].IsValid()
-		if (ok == false) && (pub_config.Debug == true) {
-			fmt.Println("The repo ", repos[index], " is invalid. ", msgs)
-			continue
+		if err := repos[index].IsValid(); err != nil {
+			if pub_config.Debug == true {
+				fmt.Println("The repo ", repos[index], " is invalid. ", err)
+				continue
+			}
 		}
 		fmt.Println(repos[index])
 		if id, ok := libocit.DBAdd(libocit.DBRepo, repos[index]); ok {

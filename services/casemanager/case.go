@@ -67,18 +67,17 @@ func AddRepo(w http.ResponseWriter, r *http.Request) {
 			ret.Status = libocit.RetStatusFailed
 			ret.Message = fmt.Sprintf("The repo is invalid.")
 		} else {
-			if msgs, ok := repo.IsValid(); ok {
+			if err := repo.IsValid(); err == nil {
 				if id, ok := libocit.DBAdd(libocit.DBRepo, repo); ok {
 					ret.Status = libocit.RetStatusOK
 					RefreshRepo(id)
 				} else {
 					ret.Status = libocit.RetStatusFailed
-					ret.Message = fmt.Sprintf("The repo has %d error(s).", len(msgs))
+					ret.Message = fmt.Sprintf("Cannot add repo: ", err.Error())
 				}
 			} else {
 				ret.Status = libocit.RetStatusFailed
-				ret.Message = fmt.Sprintf("The repo has %d error(s).", len(msgs))
-				ret.Data = msgs
+				ret.Message = fmt.Sprintf("The repo has error: ", err.Error())
 			}
 		}
 	} else if action == "Refresh" {
