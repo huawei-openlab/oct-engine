@@ -3,9 +3,11 @@ package libocit
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 )
 
-const SchedularDefaultPrio = 100
+const SchedulerPriority = "Priority"
+const SchedulerDefaultPrio = 100
 
 type TestTask struct {
 	ID      string
@@ -26,13 +28,23 @@ func TaskFromString(val string) (task TestTask, err error) {
 	return task, err
 }
 
-func TestTaskNew(postURL string, bundleURL string, prio int) (task TestTask) {
-	task.PostURL = postURL
-	task.BundleURL = bundleURL
-	task.Status = TestStatusInit
-	task.Priority = prio
-
-	return task
+func TestTaskNew(postURL string, bundleURL string, prio int) (task TestTask, ok bool) {
+	params := make(map[string]string)
+	params[SchedulerPriority] = strconv.Itoa(prio)
+	ret := SendFile(postURL, bundleURL, params)
+	if ret.Status == RetStatusOK {
+		task.ID = ret.Message
+		task.PostURL = fmt.Sprintf("%s/%s", postURL, task.ID)
+		task.BundleURL = bundleURL
+		task.Status = TestStatusInit
+		task.Priority = prio
+		task.Status = TestStatusAllocated
+		ok = true
+	} else {
+		task.Status = TestStatusAllocateFailed
+		ok = false
+	}
+	return task, ok
 }
 
 func (task *TestTask) SetID(id string) {
@@ -45,7 +57,84 @@ func (task *TestTask) GetID() string {
 	return task.ID
 }
 
-func (task *TestTask) Run() (needContinue bool) {
+func (task *TestTask) Deploy() (ok bool) {
+	if task.Status != TestStatusAllocated {
+		return false
+	}
+	task.Status = TestStatusDeploying
+	ret := SendCommand(task.PostURL, []byte(TestActionDeploy))
+	if ret.Status == RetStatusOK {
+		task.Status = TestStatusDeployed
+		ok = true
+	} else {
+		task.Status = TestStatusDeployFailed
+		ok = false
+	}
+	return ok
+}
+
+func (task *TestTask) Run() (ok bool) {
+	if task.Status != TestStatusDeployed {
+		return false
+	}
+	task.Status = TestStatusRunning
+	ret := SendCommand(task.PostURL, []byte(TestActionRun))
+	if ret.Status == RetStatusOK {
+		task.Status = TestStatusRun
+		ok = true
+	} else {
+		task.Status = TestStatusRunFailed
+		ok = false
+	}
+	return ok
+}
+
+func (task *TestTask) Collect() (ok bool) {
+	if task.Status != TestStatusRun {
+		return false
+	}
+	task.Status = TestStatusCollecting
+	ret := SendCommand(task.PostURL, []byte(TestActionCollect))
+	if ret.Status == RetStatusOK {
+		task.Status = TestStatusCollected
+		ok = true
+	} else {
+		task.Status = TestStatusCollectFailed
+		ok = false
+	}
+	return ok
+}
+
+func (task *TestTask) Destroy() (ok bool) {
+	task.Status = TestStatusDestroying
+	ret := SendCommand(task.PostURL, []byte(TestActionDestroy))
+	if ret.Status == RetStatusOK {
+		task.Status = TestStatusFinish
+		ok = true
+	} else {
+		task.Status = TestStatusDestroyFailed
+		ok = false
+	}
+	return ok
+}
+
+func (task *TestTask) Command(action TestAction) bool {
+	switch action {
+	case TestActionDeploy:
+		return task.Deploy()
+	case TestActionRun:
+		return task.Run()
+	case TestActionCollect:
+		return task.Collect()
+	case TestActionDestroy:
+		return task.Destroy()
+	default:
+		fmt.Println("The action is not supported")
+	}
+	return false
+}
+
+func (task *TestTask) Loop() (needContinue bool) {
 	needContinue = false
 	switch task.Status {
 	case TestStatusInit:
@@ -55,7 +144,6 @@ func (task *TestTask) Run() (needContinue bool) {
 		ret := SendFile(task.PostURL, task.BundleURL, params)
 		fmt.Println("Run send file : ", task.PostURL, task.BundleURL)
 		if ret.Status == RetStatusOK {
-			//FIXME: use message to mean id is not a good idea
 			task.ID = ret.Message
 			task.PostURL = fmt.Sprintf("%s/%s", task.PostURL, task.ID)
 			task.Status = TestStatusAllocated
@@ -63,40 +151,14 @@ func (task *TestTask) Run() (needContinue bool) {
 			task.Status = TestStatusAllocateFailed
 		}
 	case TestStatusAllocated:
-		task.Status = TestStatusDeploying
-		ret := SendCommand(task.PostURL, []byte(TestActionDeploy))
-		if ret.Status == RetStatusOK {
-			task.Status = TestStatusDeployed
-			needContinue = true
-		} else {
-			task.Status = TestStatusDeployFailed
-		}
+		needContinue = task.Deploy()
 	case TestStatusDeployed:
-		task.Status = TestStatusRunning
-		ret := SendCommand(task.PostURL, []byte(TestActionRun))
-		if ret.Status == RetStatusOK {
-			task.Status = TestStatusRun
-			needContinue = true
-		} else {
-			task.Status = TestStatusRunFailed
-		}
+		needContinue = task.Run()
 	case TestStatusRun:
-		task.Status = TestStatusCollecting
-		ret := SendCommand(task.PostURL, []byte(TestActionCollect))
-		if ret.Status == RetStatusOK {
-			task.Status = TestStatusCollected
-			needContinue = true
-		} else {
-			task.Status = TestStatusCollectFailed
-		}
+		needContinue = task.Collect()
 	case TestStatusCollected:
-		task.Status = TestStatusDestroying
-		ret := SendCommand(task.PostURL, []byte(TestActionDestroy))
-		if ret.Status == RetStatusOK {
-			task.Status = TestStatusFinish
-		} else {
-			task.Status = TestStatusDestroyFailed
-		}
+		task.Destroy()
+		needContinue = false
 	}
 	return needContinue
 }

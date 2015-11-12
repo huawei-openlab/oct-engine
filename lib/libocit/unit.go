@@ -40,6 +40,22 @@ const (
 	TestActionDestroy            = "destroy"
 )
 
+func TestActionFromString(val string) (TestAction, bool) {
+	switch val {
+	case "apploy":
+		return TestActionApply, true
+	case "deploy":
+		return TestActionDeploy, true
+	case "run":
+		return TestActionRun, true
+	case "collect":
+		return TestActionCollect, true
+	case "destroy":
+		return TestActionDestroy, true
+	}
+	return TestActionAction, false
+}
+
 type TestUnit struct {
 	ResourceCommon
 	//Suggest to name the unit, easier to write/maintain, must be different

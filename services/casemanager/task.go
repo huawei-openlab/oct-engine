@@ -29,10 +29,10 @@ func AddTask(w http.ResponseWriter, r *http.Request) {
 
 	bundleURL := tc.GetBundleURL()
 	postURL := pubConfig.SchedulerURL
-	task := libocit.TestTaskNew(postURL, bundleURL, libocit.SchedularDefaultPrio)
-	if id, ok := libocit.DBAdd(libocit.DBTask, task); ok {
+	if task, ok := libocit.TestTaskNew(postURL, bundleURL, libocit.SchedulerDefaultPrio); ok {
+		libocit.DBAdd(libocit.DBTask, task)
 		ret.Status = libocit.RetStatusOK
-		ret.Data = id
+		ret.Data = task.GetID()
 	} else {
 		ret.Status = libocit.RetStatusFailed
 	}
@@ -56,13 +56,32 @@ func GetTaskStatus(w http.ResponseWriter, r *http.Request) {
 
 func PostTaskAction(w http.ResponseWriter, r *http.Request) {
 	var ret libocit.HttpRet
+	result, _ := ioutil.ReadAll(r.Body)
+	r.Body.Close()
+	action, ok := libocit.TestActionFromString(string(result))
+	if !ok {
+		ret.Status = libocit.RetStatusFailed
+		ret.Message = "Invalid action, should limit to 'deploy,run,collect and destroy'"
+		retInfo, _ := json.MarshalIndent(ret, "", "\t")
+		w.Write([]byte(retInfo))
+		return
+	}
 	id := r.URL.Query().Get(":ID")
-	if _, ok := libocit.DBGet(libocit.DBTask, id); ok {
-		//TODO: send to schedular
+	taskInterface, ok := libocit.DBGet(libocit.DBTask, id)
+	if !ok {
+		ret.Status = libocit.RetStatusFailed
+		ret.Message = "Cannot find the task, wrong ID provided"
+		retInfo, _ := json.MarshalIndent(ret, "", "\t")
+		w.Write([]byte(retInfo))
+		return
+	}
+
+	task, _ := libocit.TaskFromString(taskInterface.String())
+	if task.Command(action) {
 		ret.Status = libocit.RetStatusOK
 	} else {
 		ret.Status = libocit.RetStatusFailed
-		ret.Message = "Cannot find the task, wrong ID provided"
+		ret.Message = "Failed to call the action"
 	}
 	retInfo, _ := json.MarshalIndent(ret, "", "\t")
 	w.Write([]byte(retInfo))

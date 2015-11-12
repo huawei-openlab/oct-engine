@@ -34,9 +34,13 @@ type ResourceCommon struct {
 //This is record in the testing cluster
 type Resource struct {
 	ResourceCommon
-	ID     string
-	URL    string
-	Status ResourceStatus
+	ID  string
+	URL string
+
+	//0 means no limit
+	MaxJobs     int
+	TestUnitIDs []string
+	Status      ResourceStatus
 }
 
 func (res Resource) String() string {
@@ -94,4 +98,12 @@ func (res *Resource) IsQualify(req ResourceCommon) bool {
 		return false
 	}
 	return true
+}
+
+func (res *Resource) Allocate(unit TestUnit) bool {
+	if res.MaxJobs == 0 || res.MaxJobs > len(res.TestUnitIDs) {
+		res.TestUnitIDs = append(res.TestUnitIDs, unit.GetID())
+		return true
+	}
+	return false
 }
