@@ -214,7 +214,7 @@ GET /os
 ```
 POST /os
 ```
-Add a new host OS node to the Test Server. Most time it is done automaticly when an 'ocitd' daemon start running in a new node.
+Add a new host OS node to the Test Server. Most time it is done automaticly when an 'octd' daemon start running in a new node.
 
 **Input**
 

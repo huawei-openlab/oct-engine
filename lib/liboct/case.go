@@ -1,6 +1,6 @@
 //NOTE: this file is used for the 'Schedular'
 //TODO: all 'sync' mode now
-package libocit
+package liboct
 
 import (
 	"encoding/json"

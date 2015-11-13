@@ -1,7 +1,7 @@
 package main
 
 import (
-	"../../lib/libocit"
+	"../../lib/liboct"
 	"../../lib/routes"
 	"encoding/json"
 	"fmt"
@@ -11,7 +11,7 @@ import (
 )
 
 type CaseManagerConf struct {
-	Repos        []libocit.TestCaseRepo
+	Repos        []liboct.TestCaseRepo
 	SchedulerURL string
 	Port         int
 	Debug        bool
@@ -32,9 +32,9 @@ func init() {
 		return
 	}
 
-	libocit.DBRegist(libocit.DBCase)
-	libocit.DBRegist(libocit.DBRepo)
-	libocit.DBRegist(libocit.DBTask)
+	liboct.DBRegist(liboct.DBCase)
+	liboct.DBRegist(liboct.DBRepo)
+	liboct.DBRegist(liboct.DBTask)
 
 	repos := pubConfig.Repos
 	for index := 0; index < len(repos); index++ {
@@ -45,7 +45,7 @@ func init() {
 			}
 		}
 		fmt.Println(repos[index])
-		if id, ok := libocit.DBAdd(libocit.DBRepo, repos[index]); ok {
+		if id, ok := liboct.DBAdd(liboct.DBRepo, repos[index]); ok {
 			RefreshRepo(id)
 		}
 	}
@@ -53,7 +53,7 @@ func init() {
 
 //TODO: is there any usefull Restful help document lib?
 func GetHelp(w http.ResponseWriter, r *http.Request) {
-	var ret libocit.HttpRet
+	var ret liboct.HttpRet
 	ret.Status = "OK"
 	ret.Message = fmt.Sprintf("The following APIs are supported.")
 	ret.Data = "case, repo and task"

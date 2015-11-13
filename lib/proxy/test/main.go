@@ -2,19 +2,25 @@ package main
 
 import (
 	"../"
-	"../../libocit"
+	"../../liboct"
 	"fmt"
 )
 
 func main() {
 	containerFile := "container.conf"
-	value := libocit.ReadFile(containerFile)
+	value := liboct.ReadFile(containerFile)
 	container, ok := proxy.ContainerNew(value)
 	if ok == false {
 		fmt.Println("Cannot get container content.")
 		return
 	}
+	fmt.Println(container)
+	fmt.Println("--------")
+	//	container.Hook()
 	container.Build()
+	container.Name = "name"
+	fmt.Println("--------")
+	fmt.Println(container)
 	/*
 		container.Status()
 

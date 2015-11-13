@@ -1,7 +1,7 @@
 package main
 
 import (
-	"../../../lib/libocit"
+	"../../../lib/liboct"
 	"flag"
 	"fmt"
 )
@@ -45,13 +45,13 @@ func main() {
 	var caseID = flag.String("id", "", "input the 'case id' provided by 'Test Case server', please make sure the the tcserver is running.")
 	flag.Parse()
 
-	var warning_msg []libocit.ValidatorMessage
-	var err_msg []libocit.ValidatorMessage
+	var warning_msg []liboct.ValidatorMessage
+	var err_msg []liboct.ValidatorMessage
 	if len(*caseID) > 0 {
 	} else if len(*caseFile) > 0 {
-		libocit.ValidateByFile(*caseFile)
+		liboct.ValidateByFile(*caseFile)
 	} else if len(*caseDir) > 0 {
-		warning_msg, err_msg = libocit.ValidateByDir(*caseDir, *caseName)
+		warning_msg, err_msg = liboct.ValidateByDir(*caseDir, *caseName)
 	} else {
 		fmt.Println("Please input the test case")
 		return

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"../../lib/libocit"
+	"../../lib/liboct"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -12,42 +12,42 @@ import (
 const CMTKey = "case manager task"
 
 func AddTask(w http.ResponseWriter, r *http.Request) {
-	var ret libocit.HttpRet
+	var ret liboct.HttpRet
 	result, _ := ioutil.ReadAll(r.Body)
 	r.Body.Close()
 
 	caseID := string(result)
-	caseInterface, ok := libocit.DBGet(libocit.DBCase, caseID)
+	caseInterface, ok := liboct.DBGet(liboct.DBCase, caseID)
 	if !ok {
-		ret.Status = libocit.RetStatusFailed
+		ret.Status = liboct.RetStatusFailed
 		ret.Message = "Invalid case id"
 		retInfo, _ := json.MarshalIndent(ret, "", "\t")
 		w.Write([]byte(retInfo))
 		return
 	}
-	tc, _ := libocit.CaseFromString(caseInterface.String())
+	tc, _ := liboct.CaseFromString(caseInterface.String())
 
 	bundleURL := tc.GetBundleURL()
 	postURL := pubConfig.SchedulerURL
-	if task, ok := libocit.TestTaskNew(postURL, bundleURL, libocit.SchedulerDefaultPrio); ok {
-		libocit.DBAdd(libocit.DBTask, task)
-		ret.Status = libocit.RetStatusOK
+	if task, ok := liboct.TestTaskNew(postURL, bundleURL, liboct.SchedulerDefaultPrio); ok {
+		liboct.DBAdd(liboct.DBTask, task)
+		ret.Status = liboct.RetStatusOK
 		ret.Data = task.GetID()
 	} else {
-		ret.Status = libocit.RetStatusFailed
+		ret.Status = liboct.RetStatusFailed
 	}
 	retInfo, _ := json.MarshalIndent(ret, "", "\t")
 	w.Write([]byte(retInfo))
 }
 
 func GetTaskStatus(w http.ResponseWriter, r *http.Request) {
-	var ret libocit.HttpRet
+	var ret liboct.HttpRet
 	id := r.URL.Query().Get(":ID")
-	if taskInterface, ok := libocit.DBGet(libocit.DBTask, id); ok {
-		ret.Status = libocit.RetStatusOK
+	if taskInterface, ok := liboct.DBGet(liboct.DBTask, id); ok {
+		ret.Status = liboct.RetStatusOK
 		ret.Data = taskInterface
 	} else {
-		ret.Status = libocit.RetStatusFailed
+		ret.Status = liboct.RetStatusFailed
 		ret.Message = "Cannot find the task, wrong ID provided"
 	}
 	retInfo, _ := json.MarshalIndent(ret, "", "\t")
@@ -55,32 +55,32 @@ func GetTaskStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostTaskAction(w http.ResponseWriter, r *http.Request) {
-	var ret libocit.HttpRet
+	var ret liboct.HttpRet
 	result, _ := ioutil.ReadAll(r.Body)
 	r.Body.Close()
-	action, ok := libocit.TestActionFromString(string(result))
+	action, ok := liboct.TestActionFromString(string(result))
 	if !ok {
-		ret.Status = libocit.RetStatusFailed
+		ret.Status = liboct.RetStatusFailed
 		ret.Message = "Invalid action, should limit to 'deploy,run,collect and destroy'"
 		retInfo, _ := json.MarshalIndent(ret, "", "\t")
 		w.Write([]byte(retInfo))
 		return
 	}
 	id := r.URL.Query().Get(":ID")
-	taskInterface, ok := libocit.DBGet(libocit.DBTask, id)
+	taskInterface, ok := liboct.DBGet(liboct.DBTask, id)
 	if !ok {
-		ret.Status = libocit.RetStatusFailed
+		ret.Status = liboct.RetStatusFailed
 		ret.Message = "Cannot find the task, wrong ID provided"
 		retInfo, _ := json.MarshalIndent(ret, "", "\t")
 		w.Write([]byte(retInfo))
 		return
 	}
 
-	task, _ := libocit.TaskFromString(taskInterface.String())
+	task, _ := liboct.TaskFromString(taskInterface.String())
 	if task.Command(action) {
-		ret.Status = libocit.RetStatusOK
+		ret.Status = liboct.RetStatusOK
 	} else {
-		ret.Status = libocit.RetStatusFailed
+		ret.Status = liboct.RetStatusFailed
 		ret.Message = "Failed to call the action"
 	}
 	retInfo, _ := json.MarshalIndent(ret, "", "\t")
@@ -89,7 +89,7 @@ func PostTaskAction(w http.ResponseWriter, r *http.Request) {
 
 func ListTasks(w http.ResponseWriter, r *http.Request) {
 	//TODO status
-	var query libocit.DBQuery
+	var query liboct.DBQuery
 	pageStr := r.URL.Query().Get("Page")
 	page, err := strconv.Atoi(pageStr)
 	if err == nil {
@@ -101,15 +101,15 @@ func ListTasks(w http.ResponseWriter, r *http.Request) {
 		query.PageSize = pageSize
 	}
 
-	ids := libocit.DBLookup(libocit.DBTask, query)
+	ids := liboct.DBLookup(liboct.DBTask, query)
 
-	var tl []libocit.DBInterface
+	var tl []liboct.DBInterface
 	for index := 0; index < len(ids); index++ {
-		task, _ := libocit.DBGet(libocit.DBTask, ids[index])
+		task, _ := liboct.DBGet(liboct.DBTask, ids[index])
 		tl = append(tl, task)
 	}
-	var ret libocit.HttpRet
-	ret.Status = libocit.RetStatusOK
+	var ret liboct.HttpRet
+	ret.Status = liboct.RetStatusOK
 	ret.Message = fmt.Sprintf("%d tasks founded", len(tl))
 	ret.Data = tl
 	retInfo, _ := json.MarshalIndent(ret, "", "\t")

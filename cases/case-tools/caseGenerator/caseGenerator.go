@@ -1,7 +1,7 @@
 package main
 
 import (
-	"../../../lib/libocit"
+	"../../../lib/liboct"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -10,13 +10,13 @@ import (
 )
 
 func createCase(caseName string) {
-	sourceUrl := libocit.PreparePath(caseName, "source")
+	sourceUrl := liboct.PreparePath(caseName, "source")
 	if len(sourceUrl) == 0 {
 		fmt.Println("Cannot prepare the case directory")
 		return
 	}
 
-	var tc libocit.TestCase
+	var tc liboct.TestCase
 	tc.Name = caseName
 	tc.Summary = caseName + " test"
 	tc.Version = "0.1.0"
@@ -24,29 +24,29 @@ func createCase(caseName string) {
 	tc.Group = "yourgroup/yoursubgroup"
 	tc.Owner = "you you@you.com"
 
-	var req libocit.Require
+	var req liboct.Require
 	req.Class = "osA"
 	req.Type = "os"
 	req.Distribution = "openSUSE/CentOS/Ubuntu"
 	req.Version = "12"
-	req.Resource = libocit.OSResource{1, "1GB", "1GB"}
-	tc.Requires = []libocit.Require{req}
+	req.Resource = liboct.OSResource{1, "1GB", "1GB"}
+	tc.Requires = []liboct.Require{req}
 
-	var dep libocit.Deploy
+	var dep liboct.Deploy
 	dep.Object = "hostA"
 	dep.Class = "osA"
 	dep.Cmd = "./yourdeploycommand"
-	tc.Deploys = []libocit.Deploy{dep}
+	tc.Deploys = []liboct.Deploy{dep}
 
-	var run libocit.Deploy
+	var run liboct.Deploy
 	run.Object = "hostA"
 	run.Cmd = "./yourruncommand -o case.log"
-	tc.Run = []libocit.Deploy{run}
+	tc.Run = []liboct.Deploy{run}
 
-	var collect libocit.Collect
+	var collect liboct.Collect
 	collect.Object = "hostA"
 	collect.Files = []string{"case.log"}
-	tc.Collects = []libocit.Collect{collect}
+	tc.Collects = []liboct.Collect{collect}
 
 	content, _ := json.MarshalIndent(tc, "", "\t")
 

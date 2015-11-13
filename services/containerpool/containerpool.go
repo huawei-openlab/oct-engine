@@ -1,7 +1,7 @@
 package main
 
 import (
-	"../../lib/libocit"
+	"../../lib/liboct"
 	"../../lib/routes"
 	"encoding/json"
 	"fmt"
@@ -21,7 +21,7 @@ type ContainerPoolConfig struct {
 func main() {
 	var config ContainerPoolConfig
 
-	content := libocit.ReadFile("./containerpool.conf")
+	content := liboct.ReadFile("./containerpool.conf")
 	json.Unmarshal([]byte(content), &config)
 	var port string
 	port = fmt.Sprintf(":%d", config.Port)
@@ -47,8 +47,8 @@ func UploadFile(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	cache_uri := "/tmp/testcase_ocitd_cache"
-	real_url := libocit.PreparePath(cache_uri, handler.Filename)
+	cache_uri := "/tmp/testcase_octd_cache"
+	real_url := liboct.PreparePath(cache_uri, handler.Filename)
 	f, err := os.Create(real_url)
 	if err != nil {
 		//TODO: better system error
@@ -57,7 +57,7 @@ func UploadFile(w http.ResponseWriter, r *http.Request) {
 	}
 	defer f.Close()
 	io.Copy(f, file)
-	libocit.UntarFile(real_url, cache_uri)
+	liboct.UntarFile(real_url, cache_uri)
 
 	w.Write([]byte("OK"))
 }
@@ -66,7 +66,7 @@ func BuildImage(w http.ResponseWriter, r *http.Request) {
 	result, _ := ioutil.ReadAll(r.Body)
 	r.Body.Close()
 
-	var req libocit.Require
+	var req liboct.Require
 	json.Unmarshal([]byte(result), &req)
 
 	fmt.Println(req)

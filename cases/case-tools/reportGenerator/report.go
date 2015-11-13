@@ -1,7 +1,7 @@
 package main
 
 import (
-	"../../../lib/libocit"
+	"../../../lib/liboct"
 	"encoding/json"
 	"os"
 	"path"
@@ -38,7 +38,7 @@ type CaseBody struct {
 	Collects         []TCFile
 }
 
-func generate_resource(ts_demo libocit.TestCase) (cb CaseBody) {
+func generate_resource(ts_demo liboct.TestCase) (cb CaseBody) {
 	for index := 0; index < len(ts_demo.Deploys); index++ {
 		var hd HostDetail
 		deploy := ts_demo.Deploys[index]
@@ -86,10 +86,10 @@ func generate_resource(ts_demo libocit.TestCase) (cb CaseBody) {
 	return cb
 }
 func main() {
-	var tc libocit.TestCase
+	var tc liboct.TestCase
 
 	//Head info
-	content := libocit.ReadFile("template.json")
+	content := liboct.ReadFile("template.json")
 	json.Unmarshal([]byte(content), &tc)
 
 	tmpl, err := template.ParseFiles("./template/head.md")
@@ -119,7 +119,7 @@ func main() {
 					var c_file TCFile
 					c_file.Name = path.Base(req.Files[f_index])
 					c_file.Tag = strings.ToLower(path.Base(req.Files[f_index]))
-					c_file.Content = libocit.ReadFile(req.Files[f_index])
+					c_file.Content = liboct.ReadFile(req.Files[f_index])
 					cb.Files = append(cb.Files, c_file)
 					break
 				}
@@ -135,7 +135,7 @@ func main() {
 			//FIXME: How to convert file to a 'http#' recognized link?
 			c_file.Tag = strings.ToLower(c_file.Name)
 			c_file.Tag = strings.Replace(c_file.Tag, ".json", "", 1)
-			c_file.Content = libocit.ReadFile(file_name)
+			c_file.Content = liboct.ReadFile(file_name)
 			cb.Collects = append(cb.Collects, c_file)
 		}
 

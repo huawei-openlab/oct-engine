@@ -1,6 +1,6 @@
 //NOTE: this file is used for the 'Schedular'
 //TODO: all 'sync' mode now
-package libocit
+package liboct
 
 import (
 	"encoding/json"
@@ -85,7 +85,7 @@ type TestCommand struct {
 	Collect string
 }
 
-//Used for tranfer between scheduler and ocitd/containerpool
+//Used for tranfer between scheduler and octd/containerpool
 type TestActionCommand struct {
 	Action  string
 	Command string
@@ -190,6 +190,7 @@ func (t *TestUnit) Apply() (ok bool) {
 		res, _ := ResourceFromString(resInterface.String())
 		if res.IsQualify(t.ResourceCommon) {
 			id = ids[index]
+			res.Allocate(*t)
 			break
 		}
 	}
@@ -251,6 +252,7 @@ func (t *TestUnit) Collect() bool {
 func (t *TestUnit) Destroy() bool {
 	t.Status = TestStatusDestroying
 	ok := t.command(TestActionDestroy)
+	//TODO After destroy, should release the resource!
 	if ok {
 		t.Status = TestStatusFinish
 	} else {

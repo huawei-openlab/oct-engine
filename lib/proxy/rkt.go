@@ -8,9 +8,9 @@ type RKTContainer struct {
 	ContainerCommon
 }
 
-func (rkt RKTContainer) Build() bool {
+func (rkt RKTContainer) Build() string {
 	fmt.Println("RKT build", rkt.Distribution)
-	return true
+	return "ok"
 }
 
 func (rkt RKTContainer) Pull() bool {

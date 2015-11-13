@@ -10,7 +10,7 @@ type DockerContainer struct {
 	ContainerCommon
 }
 
-func (dc DockerContainer) Build() bool {
+func (dc DockerContainer) Build() string {
 	cmd := fmt.Sprintf("docker build -t %s", dc.Name)
 	fmt.Println("Docker build: ", cmd)
 
@@ -18,7 +18,7 @@ func (dc DockerContainer) Build() bool {
 	c := exec.Command("/bin/sh", "-c", cmd)
 	c.Run()
 
-	return true
+	return "true"
 }
 
 func (dc DockerContainer) Pull() bool {

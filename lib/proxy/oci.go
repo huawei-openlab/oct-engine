@@ -1,7 +1,7 @@
 package proxy
 
 import (
-	"../libocit"
+	"../liboct"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -28,7 +28,7 @@ func OCISettingNew() OCISetting {
 	var ociSetting OCISetting
 	config := "oci.config"
 
-	content := libocit.ReadFile(config)
+	content := liboct.ReadFile(config)
 	json.Unmarshal([]byte(content), &ociSetting)
 
 	return ociSetting
@@ -46,7 +46,7 @@ func OCIContainerNew(cc ContainerCommon) OCIContainer {
 }
 
 func (oci OCIContainer) Init() bool {
-	libocit.PreparePath(oci.BundleDir, "")
+	liboct.PreparePath(oci.BundleDir, "")
 
 	//check if runtime (runC for example) was exist
 
@@ -54,10 +54,18 @@ func (oci OCIContainer) Init() bool {
 
 }
 
-func (oci OCIContainer) Build() bool {
+func (oci *OCIContainer) Hook() bool {
+	oci.Name = "Change this name"
+	return true
+}
+
+func (oci OCIContainer) Build() string {
+	oci.Name = "Change this name"
+	oci.BundleDir = "bundle changed"
+
 	fmt.Println("OCI build", oci.Distribution)
 	fmt.Println("No avaiable build server supported yet!")
-	return true
+	return "Change the name"
 }
 
 func (oci OCIContainer) Pull() bool {
@@ -85,7 +93,7 @@ func (oci OCIContainer) Deploy() bool {
 	//NOTE: deploy dir is not the case cache dir
 	//copy oci.DeployDir to bundleDir/rootfs/oct-test
 	testDir := path.Join(oci.BundleDir, "rootfs", "oct-test")
-	libocit.PreparePath(testDir, "")
+	liboct.PreparePath(testDir, "")
 
 	return true
 }

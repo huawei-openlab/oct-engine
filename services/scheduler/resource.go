@@ -1,7 +1,7 @@
 package main
 
 import (
-	"../../lib/libocit"
+	"../../lib/liboct"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -10,8 +10,8 @@ import (
 	"sync"
 )
 
-func GetResourceQuery(r *http.Request) libocit.DBQuery {
-	var query libocit.DBQuery
+func GetResourceQuery(r *http.Request) liboct.DBQuery {
+	var query liboct.DBQuery
 	page_string := r.URL.Query().Get("Page")
 	page, err := strconv.Atoi(page_string)
 	if err == nil {
@@ -41,18 +41,18 @@ func GetResourceStatus(w http.ResponseWriter, r *http.Request) {
 func GetResource(w http.ResponseWriter, r *http.Request) {
 	query := GetResourceQuery(r)
 
-	ids := libocit.DBLookup(libocit.DBResource, query)
+	ids := liboct.DBLookup(liboct.DBResource, query)
 
-	var ret libocit.HttpRet
+	var ret liboct.HttpRet
 	if len(ids) == 0 {
-		ret.Status = libocit.RetStatusFailed
+		ret.Status = liboct.RetStatusFailed
 		ret.Message = "Cannot find the avaliable resource"
 	} else {
-		ret.Status = libocit.RetStatusOK
+		ret.Status = liboct.RetStatusOK
 		ret.Message = "Find the avaliable resource"
-		var rss []libocit.DBInterface
+		var rss []liboct.DBInterface
 		for index := 0; index < len(ids); index++ {
-			res, _ := libocit.DBGet(libocit.DBResource, ids[index])
+			res, _ := liboct.DBGet(liboct.DBResource, ids[index])
 			rss = append(rss, res)
 		}
 
@@ -64,8 +64,8 @@ func GetResource(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostResource(w http.ResponseWriter, r *http.Request) {
-	var res libocit.Resource
-	var ret libocit.HttpRet
+	var res liboct.Resource
+	var ret liboct.HttpRet
 
 	result, _ := ioutil.ReadAll(r.Body)
 	r.Body.Close()
@@ -74,15 +74,15 @@ func PostResource(w http.ResponseWriter, r *http.Request) {
 	}
 	json.Unmarshal([]byte(result), &res)
 	if err := res.IsValid(); err != nil {
-		ret.Status = libocit.RetStatusFailed
+		ret.Status = liboct.RetStatusFailed
 		ret.Message = err.Error()
 	} else {
 		lock.Lock()
-		if id, ok := libocit.DBAdd(libocit.DBResource, res); ok {
+		if id, ok := liboct.DBAdd(liboct.DBResource, res); ok {
 			ret.Status = "OK"
 			ret.Message = fmt.Sprintf("Success in adding the resource: %s ", id)
 		} else {
-			ret.Status = libocit.RetStatusFailed
+			ret.Status = liboct.RetStatusFailed
 			ret.Message = "this resource is already exist"
 		}
 		lock.Unlock()
@@ -92,14 +92,14 @@ func PostResource(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteResource(w http.ResponseWriter, r *http.Request) {
-	var ret libocit.HttpRet
+	var ret liboct.HttpRet
 	id := r.URL.Query().Get("ID")
 	lock.Lock()
-	if libocit.DBRemove(libocit.DBResource, id) {
-		ret.Status = libocit.RetStatusOK
+	if liboct.DBRemove(liboct.DBResource, id) {
+		ret.Status = liboct.RetStatusOK
 		ret.Message = "Success in remove the resource"
 	} else {
-		ret.Status = libocit.RetStatusFailed
+		ret.Status = liboct.RetStatusFailed
 		ret.Message = "Cannot find the resource"
 	}
 	lock.Unlock()

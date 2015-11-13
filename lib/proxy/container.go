@@ -6,7 +6,7 @@ import (
 )
 
 type Container interface {
-	Build() bool
+	Build() string
 	Pull() bool
 	Deploy() bool
 	Run() bool
@@ -24,9 +24,9 @@ type ContainerCommon struct {
 	RunCommand   string
 }
 
-func (cc ContainerCommon) Build() bool {
+func (cc ContainerCommon) Build() string {
 	fmt.Println("Basic build")
-	return true
+	return "Basic build"
 }
 
 func ContainerNew(value string) (Container, bool) {

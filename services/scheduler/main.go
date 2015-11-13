@@ -1,7 +1,7 @@
 package main
 
 import (
-	"../../lib/libocit"
+	"../../lib/liboct"
 	"../../lib/routes"
 	"encoding/json"
 	"fmt"
@@ -21,31 +21,31 @@ type SchedulerConfig struct {
 }
 
 func ReceiveTaskCommand(w http.ResponseWriter, r *http.Request) {
-	var ret libocit.HttpRet
+	var ret liboct.HttpRet
 	id := r.URL.Query().Get(":ID")
-	sInterface, ok := libocit.DBGet(libocit.DBResource, id)
+	sInterface, ok := liboct.DBGet(liboct.DBResource, id)
 	if !ok {
-		ret.Status = libocit.RetStatusFailed
+		ret.Status = liboct.RetStatusFailed
 		ret.Message = "Invalid task id"
 		ret_string, _ := json.MarshalIndent(ret, "", "\t")
 		w.Write([]byte(ret_string))
 		return
 	}
-	s, _ := libocit.SchedulerFromString(sInterface.String())
+	s, _ := liboct.SchedulerFromString(sInterface.String())
 
-	var cmd libocit.TestActionCommand
+	var cmd liboct.TestActionCommand
 	result, _ := ioutil.ReadAll(r.Body)
 	r.Body.Close()
 	json.Unmarshal([]byte(result), &cmd)
-	action, ok := libocit.TestActionFromString(cmd.Action)
+	action, ok := liboct.TestActionFromString(cmd.Action)
 	if !ok {
-		ret.Status = libocit.RetStatusFailed
+		ret.Status = liboct.RetStatusFailed
 		ret.Message = "Invalid action"
 	} else {
 		if s.Command(action) {
-			ret.Status = libocit.RetStatusOK
+			ret.Status = liboct.RetStatusOK
 		} else {
-			ret.Status = libocit.RetStatusFailed
+			ret.Status = liboct.RetStatusFailed
 			ret.Message = "Failed to run the action"
 		}
 	}
@@ -55,12 +55,12 @@ func ReceiveTaskCommand(w http.ResponseWriter, r *http.Request) {
 }
 
 func ReceiveTask(w http.ResponseWriter, r *http.Request) {
-	var ret libocit.HttpRet
-	var tc libocit.TestCase
-	realURL, _ := libocit.ReceiveFile(w, r, SchedularCacheDir)
-	tc, err := libocit.CaseFromTar(realURL, "")
+	var ret liboct.HttpRet
+	var tc liboct.TestCase
+	realURL, _ := liboct.ReceiveFile(w, r, SchedularCacheDir)
+	tc, err := liboct.CaseFromTar(realURL, "")
 	if err != nil {
-		ret.Status = libocit.RetStatusFailed
+		ret.Status = liboct.RetStatusFailed
 		ret.Message = err.Error()
 		ret_string, _ := json.MarshalIndent(ret, "", "\t")
 		w.Write([]byte(ret_string))
@@ -68,18 +68,18 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 	} else {
 	}
 
-	s, _ := libocit.SchedulerNew(tc)
+	s, _ := liboct.SchedulerNew(tc)
 
-	if s.Command(libocit.TestActionApply) {
-		if id, ok := libocit.DBAdd(libocit.DBScheduler, s); ok {
-			ret.Status = libocit.RetStatusOK
+	if s.Command(liboct.TestActionApply) {
+		if id, ok := liboct.DBAdd(liboct.DBScheduler, s); ok {
+			ret.Status = liboct.RetStatusOK
 			ret.Message = id
 			ret_string, _ := json.MarshalIndent(ret, "", "\t")
 			w.Write([]byte(ret_string))
 			return
 		}
 	}
-	ret.Status = libocit.RetStatusFailed
+	ret.Status = liboct.RetStatusFailed
 	ret.Message = "Failed in allocate the resource"
 	ret_string, _ := json.MarshalIndent(ret, "", "\t")
 	w.Write([]byte(ret_string))
@@ -100,7 +100,7 @@ func init() {
 		return
 	}
 
-	libocit.DBRegist(libocit.DBResource)
+	liboct.DBRegist(liboct.DBResource)
 	if len(pubConfig.ServerListFile) == 0 {
 		return
 	}
@@ -111,13 +111,13 @@ func init() {
 	}
 	defer slf.Close()
 
-	var rl []libocit.Resource
+	var rl []liboct.Resource
 	if err = json.NewDecoder(slf).Decode(&rl); err != nil {
 		return
 	}
 
 	for index := 0; index < len(rl); index++ {
-		if _, ok := libocit.DBAdd(libocit.DBResource, rl[index]); ok {
+		if _, ok := liboct.DBAdd(liboct.DBResource, rl[index]); ok {
 			fmt.Println(rl[index])
 		}
 	}

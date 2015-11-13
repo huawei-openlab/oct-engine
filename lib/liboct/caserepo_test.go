@@ -1,4 +1,4 @@
-package libocit
+package liboct
 
 import (
 	"testing"
