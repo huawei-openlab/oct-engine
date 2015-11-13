@@ -1,19 +1,20 @@
-package libocit
+package main
 
 import (
+	"../../lib/libocit"
 	"encoding/json"
 )
 
 type SchedulerUnit interface {
 	Apply() string
 	//	Deploy(id string, bundleURL string) bool
-	Run(id string, action TestAction) bool
-	GetStatus() TestStatus
+	Run(id string, action libocit.TestAction) bool
+	GetStatus() libocit.TestStatus
 }
 
 type Scheduler struct {
 	ID      string
-	Case    TestCase
+	Case    libocit.TestCase
 	UnitIDs []string
 }
 
@@ -37,32 +38,32 @@ func (s *Scheduler) GetID() string {
 	return s.ID
 }
 
-func SchedulerNew(tc TestCase) (s Scheduler, ok bool) {
+func SchedulerNew(tc libocit.TestCase) (s Scheduler, ok bool) {
 	s.Case = tc
 	for index := 0; index < len(s.Case.Units); index++ {
-		s.Case.Units[index].SetStatus(TestStatusInit)
+		s.Case.Units[index].SetStatus(libocit.TestStatusInit)
 	}
 	return s, true
 }
 
-func (s *Scheduler) Command(action TestAction) (succ bool) {
+func (s *Scheduler) Command(action libocit.TestAction) (succ bool) {
 	succ = true
 	for index := 0; index < len(s.Case.Units); index++ {
 		ok := true
 		switch action {
-		case TestActionApply:
+		case libocit.TestActionApply:
 			ok = s.Case.Units[index].Apply()
 			if ok {
 				//TODO: each unit should have its own files
 				s.Case.Units[index].SetBundleURL(s.Case.BundleURL)
 			}
-		case TestActionDeploy:
+		case libocit.TestActionDeploy:
 			ok = s.Case.Units[index].Deploy()
-		case TestActionRun:
+		case libocit.TestActionRun:
 			ok = s.Case.Units[index].Run()
-		case TestActionCollect:
+		case libocit.TestActionCollect:
 			ok = s.Case.Units[index].Collect()
-		case TestActionDestroy:
+		case libocit.TestActionDestroy:
 			ok = s.Case.Units[index].Destroy()
 		}
 		if ok == false {
@@ -70,16 +71,13 @@ func (s *Scheduler) Command(action TestAction) (succ bool) {
 			break
 		}
 	}
-	if len(s.ID) > 0 {
-		DBUpdate(DBScheduler, s.ID, s)
-	}
 	return succ
 }
 
-func (s *Scheduler) GetStatus() TestStatus {
+func (s *Scheduler) GetStatus() libocit.TestStatus {
 	for index := 0; index < len(s.Case.Units); index++ {
 		//TODO: should we make the return value a list?
 		return s.Case.Units[index].GetStatus()
 	}
-	return TestStatusInit
+	return libocit.TestStatusInit
 }

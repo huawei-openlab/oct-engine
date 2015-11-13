@@ -110,7 +110,7 @@ func DBAdd(collect DBCollectName, val DBInterface) (string, bool) {
 	return id, true
 }
 
-func DBModify(collect DBCollectName, id string, val DBInterface) bool {
+func DBUpdate(collect DBCollectName, id string, val DBInterface) bool {
 	if !DBCollectExist(collect) {
 		return false
 	}

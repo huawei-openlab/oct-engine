@@ -120,7 +120,7 @@ func ModifyRepo(w http.ResponseWriter, r *http.Request) {
 		} else {
 			oldRepo, _ := libocit.RepoFromString(val.String())
 			oldRepo.Modify(newRepo)
-			libocit.DBModify(libocit.DBRepo, repoID, oldRepo)
+			libocit.DBUpdate(libocit.DBRepo, repoID, oldRepo)
 			RefreshRepo(repoID)
 			ret.Status = libocit.RetStatusOK
 		}

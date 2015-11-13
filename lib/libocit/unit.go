@@ -87,7 +87,7 @@ type TestCommand struct {
 
 //Used for tranfer between scheduler and ocitd/containerpool
 type TestActionCommand struct {
-	Action  TestAction
+	Action  string
 	Command string
 }
 
@@ -266,7 +266,7 @@ func (t *TestUnit) command(action TestAction) bool {
 	}
 
 	var cmd TestActionCommand
-	cmd.Action = action
+	cmd.Action = string(action)
 	switch action {
 	case TestActionDeploy:
 		cmd.Command = t.Commands.Deploy

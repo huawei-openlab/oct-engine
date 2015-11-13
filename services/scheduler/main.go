@@ -5,8 +5,10 @@ import (
 	"../../lib/routes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 )
 
 const SchedularCacheDir = "/tmp/.test_schedular_cache"
@@ -18,138 +20,127 @@ type SchedulerConfig struct {
 	Debug          bool
 }
 
-func GetResult(w http.ResponseWriter, r *http.Request) {
-	//TODO
+func ReceiveTaskCommand(w http.ResponseWriter, r *http.Request) {
+	var ret libocit.HttpRet
 	id := r.URL.Query().Get(":ID")
-	fmt.Println(id)
-}
+	sInterface, ok := libocit.DBGet(libocit.DBResource, id)
+	if !ok {
+		ret.Status = libocit.RetStatusFailed
+		ret.Message = "Invalid task id"
+		ret_string, _ := json.MarshalIndent(ret, "", "\t")
+		w.Write([]byte(ret_string))
+		return
+	}
+	s, _ := libocit.SchedulerFromString(sInterface.String())
 
-//List all the hostOS status
-func GetStatus(w http.ResponseWriter, r *http.Request) {
+	var cmd libocit.TestActionCommand
+	result, _ := ioutil.ReadAll(r.Body)
+	r.Body.Close()
+	json.Unmarshal([]byte(result), &cmd)
+	action, ok := libocit.TestActionFromString(cmd.Action)
+	if !ok {
+		ret.Status = libocit.RetStatusFailed
+		ret.Message = "Invalid action"
+	} else {
+		if s.Command(action) {
+			ret.Status = libocit.RetStatusOK
+		} else {
+			ret.Status = libocit.RetStatusFailed
+			ret.Message = "Failed to run the action"
+		}
+	}
+
+	ret_string, _ := json.MarshalIndent(ret, "", "\t")
+	w.Write([]byte(ret_string))
 }
 
 func ReceiveTask(w http.ResponseWriter, r *http.Request) {
-	realURL, params := libocit.ReceiveFile(w, r, SchedularCacheDir)
-	taskID := params["id"]
-
-	//TODO
-	//Untar the file and load the case.json
-	content := ""
-	if pub_config.Debug {
-		fmt.Println(content)
-	}
 	var ret libocit.HttpRet
 	var tc libocit.TestCase
-	if err := json.Unmarshal([]byte(content), &tc); err != nil {
-		ret.Status = "Failed"
-		ret.Message = "The testcase is not standard. (.tar.gz or .json)"
+	realURL, _ := libocit.ReceiveFile(w, r, SchedularCacheDir)
+	tc, err := libocit.CaseFromTar(realURL, "")
+	if err != nil {
+		ret.Status = libocit.RetStatusFailed
+		ret.Message = err.Error()
 		ret_string, _ := json.MarshalIndent(ret, "", "\t")
 		w.Write([]byte(ret_string))
 		return
 	} else {
-		ret.Status = "OK"
-		ret.Message = "success in receiving task files"
-		ret_string, _ := json.MarshalIndent(ret, "", "\t")
-		w.Write([]byte(ret_string))
 	}
 
-	tc.SetBundleURL(realURL)
-	task := SchedulerTaskNew(taskID, tc)
+	s, _ := libocit.SchedulerNew(tc)
 
-	if !task.Run(libocit.TestActionApply) {
-		return
+	if s.Command(libocit.TestActionApply) {
+		if id, ok := libocit.DBAdd(libocit.DBScheduler, s); ok {
+			ret.Status = libocit.RetStatusOK
+			ret.Message = id
+			ret_string, _ := json.MarshalIndent(ret, "", "\t")
+			w.Write([]byte(ret_string))
+			return
+		}
 	}
-	if !task.Run(libocit.TestActionDeploy) {
-		return
-	}
-	if !task.Run(libocit.TestActionRun) {
-		return
-	}
-	if !task.Run(libocit.TestActionCollect) {
-		return
-	}
-	if !task.Run(libocit.TestActionDestroy) {
-		return
-	}
+	ret.Status = libocit.RetStatusFailed
+	ret.Message = "Failed in allocate the resource"
+	ret_string, _ := json.MarshalIndent(ret, "", "\t")
+	w.Write([]byte(ret_string))
+	return
 }
 
 // Will use DB in the future, (mongodb for example)
 func init() {
+	sf, err := os.Open("scheduler.conf")
+	if err != nil {
+		fmt.Errorf("Cannot find scheduler.conf.")
+		return
+	}
+	defer sf.Close()
+
+	if err = json.NewDecoder(sf).Decode(&pubConfig); err != nil {
+		fmt.Errorf("Error in parse scheduler.conf")
+		return
+	}
+
+	libocit.DBRegist(libocit.DBResource)
+	if len(pubConfig.ServerListFile) == 0 {
+		return
+	}
+
+	slf, err := os.Open(pubConfig.ServerListFile)
+	if err != nil {
+		return
+	}
+	defer slf.Close()
+
+	var rl []libocit.Resource
+	if err = json.NewDecoder(slf).Decode(&rl); err != nil {
+		return
+	}
+
+	for index := 0; index < len(rl); index++ {
+		if _, ok := libocit.DBAdd(libocit.DBResource, rl[index]); ok {
+			fmt.Println(rl[index])
+		}
+	}
 }
 
-var pub_config SchedulerConfig
+var pubConfig SchedulerConfig
 
 func main() {
-	test()
 	return
-
-	config_content := libocit.ReadFile("./testserver.conf")
-	json.Unmarshal([]byte(config_content), &pub_config)
 
 	mux := routes.New()
 
 	mux.Get("/resource", GetResource)
 	mux.Post("/resource", PostResource)
-	mux.Get("/:ID/status", GetStatus)
+	mux.Get("/resource/:ID/status", GetResourceStatus)
+
 	mux.Post("/task", ReceiveTask)
-	mux.Get("/:ID/result", GetResult)
+	mux.Post("/task/:ID", ReceiveTaskCommand)
 
 	http.Handle("/", mux)
-	port := fmt.Sprintf(":%d", pub_config.Port)
+	port := fmt.Sprintf(":%d", pubConfig.Port)
 	err := http.ListenAndServe(port, nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
-}
-
-func test() {
-	err := SchedulerRInitFromFile("./servers.conf")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	realURL := "/tmp/.schedular_cache/1446707259/bundle.tar.gz"
-	taskID := "1446707259"
-
-	//TODO
-	//Untar the file and load the case.json
-	content := libocit.ReadCaseFromTar(realURL)
-	fmt.Println(content)
-
-	var tc libocit.TestCase
-	if err = json.Unmarshal([]byte(content), &tc); err != nil {
-		fmt.Println("The testcase is not standard. (.tar.gz or .json)")
-		return
-	}
-
-	tc.SetBundleURL(realURL)
-	task := SchedulerTaskNew(taskID, tc)
-
-	if !task.Run(libocit.TestActionApply) {
-		fmt.Println("Failed in main apply ")
-		return
-	}
-	fmt.Println(task.GetStatus())
-
-	if !task.Run(libocit.TestActionDeploy) {
-		fmt.Println("Failed in main deploy ")
-		return
-	}
-	fmt.Println(task.GetStatus())
-
-	if !task.Run(libocit.TestActionRun) {
-		fmt.Println("Failed in main run ")
-		return
-	}
-	fmt.Println(task.GetStatus())
-	if !task.Run(libocit.TestActionCollect) {
-		fmt.Println("Failed in main collect ")
-		return
-	}
-	fmt.Println(task.GetStatus())
-	if !task.Run(libocit.TestActionDestroy) {
-		fmt.Println("Failed in main destroy ")
-		return
-	}
-	fmt.Println(task.GetStatus())
 }

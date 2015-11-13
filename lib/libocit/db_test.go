@@ -43,33 +43,25 @@ func TestDBGet(t *testing.T) {
 	}
 }
 
-/*
-func DBModify(collect DBCollectName, id string, val DBInterface) bool {
-	if !DBCollectExist(collect) {
-		return false
-	}
-	_, ok := OCTDB[collect][id]
-	if ok {
-		OCTDB[collect][id] = val
+func TestDBUpdate(t *testing.T) {
+	var repo TestCaseRepo
+	DBRegist(DBRepo)
+
+	repo.Name = "repo name"
+	id, _ := DBAdd(DBRepo, repo)
+
+	repo.Name = "updated name"
+	if DBUpdate(DBRepo, id, repo) {
+		t.Log("DBUpdate OK successful !")
+	} else {
+		t.Error("DBUpdate Failed failed !")
 	}
 
-	return ok
-}
-
-func DBRemove(collect DBCollectName, id string) bool {
-	if !DBCollectExist(collect) {
-		return false
+	nRepoI, _ := DBGet(DBRepo, id)
+	nRepo, _ := RepoFromString(nRepoI.String())
+	if nRepo.Name == repo.Name {
+		t.Log("DBUpdate Name OK successful !")
+	} else {
+		t.Error("DBUpdate Name Failed failed !")
 	}
-	delete(OCTDB[collect], id)
-	return true
 }
-
-func DBLookup(collect DBCollectName, query DBQuery) (ids []string) {
-	switch collect {
-	case DBCase:
-	case DBRepo:
-	case DBTask:
-	}
-	return ids
-}
-*/

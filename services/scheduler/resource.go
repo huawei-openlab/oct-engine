@@ -35,6 +35,9 @@ func GetResourceQuery(r *http.Request) libocit.DBQuery {
 	return query
 }
 
+func GetResourceStatus(w http.ResponseWriter, r *http.Request) {
+}
+
 func GetResource(w http.ResponseWriter, r *http.Request) {
 	query := GetResourceQuery(r)
 
@@ -61,12 +64,12 @@ func GetResource(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostResource(w http.ResponseWriter, r *http.Request) {
-	var res SchedulerResource
+	var res libocit.Resource
 	var ret libocit.HttpRet
 
 	result, _ := ioutil.ReadAll(r.Body)
 	r.Body.Close()
-	if pub_config.Debug {
+	if pubConfig.Debug {
 		fmt.Println(string(result))
 	}
 	json.Unmarshal([]byte(result), &res)
