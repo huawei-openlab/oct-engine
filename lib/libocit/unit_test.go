@@ -79,3 +79,24 @@ func TestUnitApply(t *testing.T) {
 		t.Error("Unit Apply failed failed")
 	}
 }
+
+func TestActionCommandString(t *testing.T) {
+	var cmd TestActionCommand
+	cmd.Action = TestActionRun
+	cmd.Command = "ls -al "
+	val := cmd.String()
+
+	nCmd, _ := ActionCommandFromString(val)
+	if nCmd.Action == cmd.Action && nCmd.Command == cmd.Command {
+		t.Log("Action Command Unmarshal successful")
+	} else {
+		t.Error("Action Command Unmarshal failed")
+	}
+
+	nVal := nCmd.String()
+	if val == nVal {
+		t.Log("Action Command string successful")
+	} else {
+		t.Log("Action Command string failed")
+	}
+}

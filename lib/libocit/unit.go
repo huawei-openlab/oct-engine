@@ -91,6 +91,17 @@ type TestActionCommand struct {
 	Command string
 }
 
+func (t TestActionCommand) String() string {
+
+	val, _ := json.Marshal(t)
+	return string(val)
+}
+
+func ActionCommandFromString(val string) (t TestActionCommand, err error) {
+	err = json.Unmarshal([]byte(val), &t)
+	return t, err
+}
+
 type testunit TestUnit
 
 func (t TestUnit) String() string {
@@ -271,7 +282,7 @@ func (t *TestUnit) command(action TestAction) bool {
 	res, _ := ResourceFromString(resInterface.String())
 	deployURL := fmt.Sprintf("%s/task/%s", res.URL, t.schedulerID)
 
-	ret := SendCommand(deployURL, []byte(action))
+	ret := SendCommand(deployURL, []byte(cmd.String()))
 	if ret.Status == RetStatusOK {
 		return true
 	}
