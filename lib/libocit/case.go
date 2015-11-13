@@ -69,8 +69,9 @@ func (tc *TestCase) SetID(id string) {
 	}
 	for index := 0; index < len(tc.Units); index++ {
 		unitID := MD5(fmt.Sprintf("%s%d", id, index))
+		//Do we really need to setID?
 		tc.Units[index].SetID(unitID)
-		tc.Units[index].SetTestID(id)
+		tc.Units[index].SetSchedulerID(id)
 	}
 }
 

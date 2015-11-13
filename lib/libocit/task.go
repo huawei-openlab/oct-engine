@@ -12,10 +12,14 @@ const SchedulerDefaultPrio = 100
 type TestTask struct {
 	ID      string
 	PostURL string
+
 	//a tar.gz file
 	BundleURL string
 	Status    TestStatus
 	Priority  int
+
+	//Return from the scheduler
+	schedulerID string
 }
 
 func (task TestTask) String() string {
@@ -29,22 +33,11 @@ func TaskFromString(val string) (task TestTask, err error) {
 }
 
 func TestTaskNew(postURL string, bundleURL string, prio int) (task TestTask, ok bool) {
-	params := make(map[string]string)
-	params[SchedulerPriority] = strconv.Itoa(prio)
-	ret := SendFile(postURL, bundleURL, params)
-	if ret.Status == RetStatusOK {
-		task.ID = ret.Message
-		task.PostURL = fmt.Sprintf("%s/%s", postURL, task.ID)
-		task.BundleURL = bundleURL
-		task.Status = TestStatusInit
-		task.Priority = prio
-		task.Status = TestStatusAllocated
-		ok = true
-	} else {
-		task.Status = TestStatusAllocateFailed
-		ok = false
-	}
-	return task, ok
+	task.PostURL = postURL
+	task.BundleURL = bundleURL
+	task.Status = TestStatusInit
+	task.Priority = prio
+	return task, true
 }
 
 func (task *TestTask) SetID(id string) {
@@ -57,6 +50,36 @@ func (task *TestTask) GetID() string {
 	return task.ID
 }
 
+func (task *TestTask) SetSchedulerID(id string) {
+	if id != task.schedulerID {
+		task.schedulerID = id
+	}
+}
+
+func (task *TestTask) GetSchedulerID() string {
+	return task.schedulerID
+}
+
+func (task *TestTask) Apply() (ok bool) {
+	if task.Status != TestStatusInit {
+		return false
+	}
+	params := make(map[string]string)
+	params[SchedulerPriority] = strconv.Itoa(task.Priority)
+	ret := SendFile(task.PostURL, task.BundleURL, params)
+	if ret.Status == RetStatusOK {
+		task.SetSchedulerID(ret.Message)
+		task.PostURL = fmt.Sprintf("%s/%s", task.PostURL, task.GetSchedulerID())
+		task.Status = TestStatusAllocated
+		ok = true
+	} else {
+		task.Status = TestStatusAllocateFailed
+		ok = false
+	}
+	return ok
+}
+
+//Donnot need to send files now, since it will be done by the Apply function
 func (task *TestTask) Deploy() (ok bool) {
 	if task.Status != TestStatusAllocated {
 		return false

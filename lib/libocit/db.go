@@ -11,7 +11,12 @@ const (
 	DBCase     DBCollectName = "case"
 	DBRepo                   = "repo"
 	DBResource               = "resource"
-	DBTask                   = "task"
+	//testing task: for frontend users
+	DBTask = "task"
+	//scheduler: for backend servers
+	DBScheduler = "scheduler"
+	//scheduler unit
+	DBUnit = "unit"
 )
 
 type DBInterface interface {
@@ -92,6 +97,14 @@ func DBAdd(collect DBCollectName, val DBInterface) (string, bool) {
 		task, _ := TaskFromString(val.String())
 		task.SetID(id)
 		OCTDB[collect][id] = task
+	case DBUnit:
+		unit, _ := UnitFromString(val.String())
+		unit.SetID(id)
+		OCTDB[collect][id] = unit
+	case DBResource:
+		res, _ := ResourceFromString(val.String())
+		res.SetID(id)
+		OCTDB[collect][id] = res
 	}
 
 	return id, true
@@ -118,18 +131,18 @@ func DBRemove(collect DBCollectName, id string) bool {
 }
 
 func DBLookup(collect DBCollectName, query DBQuery) (ids []string) {
+	noLimit := false
 	if query.Page < 0 {
 		query.Page = 0
 	}
-	if query.PageSize <= 0 {
+	if query.PageSize < 0 {
 		query.PageSize = 30
+	} else if query.PageSize == 0 {
+		noLimit = true
 	}
 	i := 0
 	for id, _ := range OCTDB[collect] {
-		fmt.Println(i)
-		fmt.Println(query)
-		fmt.Println(id)
-		if i >= query.Page*query.PageSize && i < (query.Page+1)*query.PageSize {
+		if noLimit == true || (i >= query.Page*query.PageSize && i < (query.Page+1)*query.PageSize) {
 			//TODO: check by 'reflect'
 			switch collect {
 			case DBCase:
