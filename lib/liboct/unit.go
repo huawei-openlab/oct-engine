@@ -43,7 +43,7 @@ const (
 
 func TestActionFromString(val string) (TestAction, bool) {
 	switch val {
-	case "apploy":
+	case "apply":
 		return TestActionApply, true
 	case "deploy":
 		return TestActionDeploy, true

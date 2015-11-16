@@ -31,6 +31,8 @@ type DBQuery struct {
 
 var OCTDB map[DBCollectName](map[string]DBInterface)
 
+//TODO: change DBGenerateID to something like DBStore.Generate
+
 //The case, repo, resource should be consistent
 //The task could always be different
 func DBGenerateID(collect DBCollectName, val string) string {

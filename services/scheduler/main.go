@@ -23,7 +23,7 @@ type SchedulerConfig struct {
 func ReceiveTaskCommand(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
 	id := r.URL.Query().Get(":ID")
-	sInterface, ok := liboct.DBGet(liboct.DBResource, id)
+	sInterface, ok := liboct.DBGet(liboct.DBScheduler, id)
 	if !ok {
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = "Invalid task id"
@@ -55,10 +55,12 @@ func ReceiveTaskCommand(w http.ResponseWriter, r *http.Request) {
 }
 
 func ReceiveTask(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("ReceiveTask begin")
 	var ret liboct.HttpRet
 	var tc liboct.TestCase
 	realURL, _ := liboct.ReceiveFile(w, r, SchedularCacheDir)
 	tc, err := liboct.CaseFromTar(realURL, "")
+	fmt.Println(realURL)
 	if err != nil {
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = err.Error()
@@ -126,8 +128,6 @@ func init() {
 var pubConfig SchedulerConfig
 
 func main() {
-	return
-
 	mux := routes.New()
 
 	mux.Get("/resource", GetResource)

@@ -30,9 +30,9 @@ func AddTask(w http.ResponseWriter, r *http.Request) {
 	bundleURL := tc.GetBundleURL()
 	postURL := pubConfig.SchedulerURL
 	if task, ok := liboct.TestTaskNew(postURL, bundleURL, liboct.SchedulerDefaultPrio); ok {
-		liboct.DBAdd(liboct.DBTask, task)
+		id, _ := liboct.DBAdd(liboct.DBTask, task)
 		ret.Status = liboct.RetStatusOK
-		ret.Data = task.GetID()
+		ret.Message = id
 	} else {
 		ret.Status = liboct.RetStatusFailed
 	}

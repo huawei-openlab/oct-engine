@@ -29,7 +29,7 @@ func GetResult(w http.ResponseWriter, r *http.Request) {
 	//TODO
 	var realURL string
 	filename := r.URL.Query().Get("File")
-	id := r.URL.Query().Get("ID")
+	id := r.URL.Query().Get(":ID")
 
 	_, err := os.Stat(filename)
 	if err == nil {
@@ -118,7 +118,7 @@ func PostTaskAction(w http.ResponseWriter, r *http.Request) {
 }
 
 func RegisterToTestServer() {
-	post_url := pubConfig.TSurl + "/os"
+	post_url := pubConfig.TSurl + "/resource"
 
 	//TODO
 	//Seems there will be lots of coding while getting the system info
@@ -152,9 +152,9 @@ func main() {
 	port = fmt.Sprintf(":%d", pubConfig.Port)
 
 	mux := routes.New()
-	mux.Get("/result", GetResult)
 	mux.Post("/task", ReceiveTask)
 	mux.Post("/task/:ID", PostTaskAction)
+	mux.Get("/task/:ID/result", GetResult)
 
 	http.Handle("/", mux)
 	fmt.Println("Start to listen ", port)

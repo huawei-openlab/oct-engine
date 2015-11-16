@@ -61,15 +61,23 @@ func (task *TestTask) GetSchedulerID() string {
 }
 
 func (task *TestTask) Apply() (ok bool) {
-	if task.Status != TestStatusInit {
+	if task.Status != TestStatusInit && task.Status != TestStatusAllocateFailed {
 		return false
 	}
 	params := make(map[string]string)
 	params[SchedulerPriority] = strconv.Itoa(task.Priority)
-	ret := SendFile(task.PostURL, task.BundleURL, params)
+
+	postURL := fmt.Sprintf("%s/task", task.PostURL)
+	bundleURL := fmt.Sprintf("%s.tar.gz", task.BundleURL)
+
+	//DEBUG
+	fmt.Println("apply task: ", postURL, bundleURL)
+
+	ret := SendFile(postURL, bundleURL, params)
+	fmt.Println(ret)
 	if ret.Status == RetStatusOK {
 		task.SetSchedulerID(ret.Message)
-		task.PostURL = fmt.Sprintf("%s/%s", task.PostURL, task.GetSchedulerID())
+		task.PostURL = fmt.Sprintf("%s/task/%s", task.PostURL, task.GetSchedulerID())
 		task.Status = TestStatusAllocated
 		ok = true
 	} else {
@@ -81,11 +89,12 @@ func (task *TestTask) Apply() (ok bool) {
 
 //Donnot need to send files now, since it will be done by the Apply function
 func (task *TestTask) Deploy() (ok bool) {
-	if task.Status != TestStatusAllocated {
+	if task.Status != TestStatusAllocated && task.Status != TestStatusDeployFailed {
 		return false
 	}
 	task.Status = TestStatusDeploying
 	ret := SendCommand(task.PostURL, []byte(TestActionDeploy))
+	fmt.Println("Deploy ", ret)
 	if ret.Status == RetStatusOK {
 		task.Status = TestStatusDeployed
 		ok = true
@@ -97,11 +106,12 @@ func (task *TestTask) Deploy() (ok bool) {
 }
 
 func (task *TestTask) Run() (ok bool) {
-	if task.Status != TestStatusDeployed {
+	if task.Status != TestStatusDeployed && task.Status != TestStatusRunFailed {
 		return false
 	}
 	task.Status = TestStatusRunning
 	ret := SendCommand(task.PostURL, []byte(TestActionRun))
+	fmt.Println("Run ", ret)
 	if ret.Status == RetStatusOK {
 		task.Status = TestStatusRun
 		ok = true
@@ -113,11 +123,12 @@ func (task *TestTask) Run() (ok bool) {
 }
 
 func (task *TestTask) Collect() (ok bool) {
-	if task.Status != TestStatusRun {
+	if task.Status != TestStatusRun && task.Status != TestStatusCollectFailed {
 		return false
 	}
 	task.Status = TestStatusCollecting
 	ret := SendCommand(task.PostURL, []byte(TestActionCollect))
+	fmt.Println("Collect ", ret)
 	if ret.Status == RetStatusOK {
 		task.Status = TestStatusCollected
 		ok = true
@@ -141,20 +152,25 @@ func (task *TestTask) Destroy() (ok bool) {
 	return ok
 }
 
-func (task *TestTask) Command(action TestAction) bool {
+func (task *TestTask) Command(action TestAction) (ok bool) {
+	ok = false
 	switch action {
+	case TestActionApply:
+		ok = task.Apply()
 	case TestActionDeploy:
-		return task.Deploy()
+		ok = task.Deploy()
 	case TestActionRun:
-		return task.Run()
+		ok = task.Run()
 	case TestActionCollect:
-		return task.Collect()
+		ok = task.Collect()
 	case TestActionDestroy:
-		return task.Destroy()
+		ok = task.Destroy()
 	default:
 		fmt.Println("The action is not supported")
+		ok = false
 	}
-	return false
+	DBUpdate(DBTask, task.ID, task)
+	return ok
 }
 
 func (task *TestTask) Loop() (needContinue bool) {
@@ -183,5 +199,6 @@ func (task *TestTask) Loop() (needContinue bool) {
 		task.Destroy()
 		needContinue = false
 	}
+	DBUpdate(DBTask, task.ID, task)
 	return needContinue
 }
