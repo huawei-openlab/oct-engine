@@ -19,7 +19,7 @@ type TestTask struct {
 	Priority  int
 
 	//Return from the scheduler
-	schedulerID string
+	SchedulerID string
 }
 
 func (task TestTask) String() string {
@@ -51,13 +51,13 @@ func (task *TestTask) GetID() string {
 }
 
 func (task *TestTask) SetSchedulerID(id string) {
-	if id != task.schedulerID {
-		task.schedulerID = id
+	if id != task.SchedulerID {
+		task.SchedulerID = id
 	}
 }
 
 func (task *TestTask) GetSchedulerID() string {
-	return task.schedulerID
+	return task.SchedulerID
 }
 
 func (task *TestTask) Apply() (ok bool) {
@@ -74,11 +74,11 @@ func (task *TestTask) Apply() (ok bool) {
 	fmt.Println("apply task: ", postURL, bundleURL)
 
 	ret := SendFile(postURL, bundleURL, params)
-	fmt.Println(ret)
 	if ret.Status == RetStatusOK {
 		task.SetSchedulerID(ret.Message)
 		task.PostURL = fmt.Sprintf("%s/task/%s", task.PostURL, task.GetSchedulerID())
 		task.Status = TestStatusAllocated
+		fmt.Println("apply return : ", task, ret.Message)
 		ok = true
 	} else {
 		task.Status = TestStatusAllocateFailed
@@ -94,7 +94,7 @@ func (task *TestTask) Deploy() (ok bool) {
 	}
 	task.Status = TestStatusDeploying
 	ret := SendCommand(task.PostURL, []byte(TestActionDeploy))
-	fmt.Println("Deploy ", ret)
+	fmt.Println("Deploy : ", task.PostURL, ret)
 	if ret.Status == RetStatusOK {
 		task.Status = TestStatusDeployed
 		ok = true
@@ -169,6 +169,7 @@ func (task *TestTask) Command(action TestAction) (ok bool) {
 		fmt.Println("The action is not supported")
 		ok = false
 	}
+	fmt.Println("Command ", action, "  Update  ", task)
 	DBUpdate(DBTask, task.ID, task)
 	return ok
 }

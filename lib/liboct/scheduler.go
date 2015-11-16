@@ -2,6 +2,7 @@ package liboct
 
 import (
 	"encoding/json"
+	"fmt"
 )
 
 type SchedulerUnit interface {
@@ -70,6 +71,7 @@ func (s *Scheduler) Command(action TestAction) (succ bool) {
 			break
 		}
 	}
+	fmt.Println("Scheduler after ", action, ": ", s, succ)
 	if len(s.ID) > 0 {
 		DBUpdate(DBScheduler, s.ID, s)
 	}

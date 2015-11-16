@@ -5,6 +5,7 @@ package liboct
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 )
 
 type ResourceStatus string
@@ -81,20 +82,25 @@ func (res *Resource) GetID() string {
 
 func (res *Resource) IsQualify(req ResourceCommon) bool {
 	if req.Distribution != res.Distribution {
+		fmt.Println("Distribution not fit")
 		return false
 	}
 	if req.Version != res.Version {
+		fmt.Println("Version not fit")
 		return false
 	}
 	if req.Arch != res.Arch {
+		fmt.Println("Arch not fit")
 		return false
 	}
 
 	//TODO: better calculation
 	if req.CPU > res.CPU {
+		fmt.Println("CPU not fit")
 		return false
 	}
 	if req.Memory > res.Memory {
+		fmt.Println("Memory not fit")
 		return false
 	}
 	return true

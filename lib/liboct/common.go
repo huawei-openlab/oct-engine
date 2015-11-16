@@ -111,8 +111,7 @@ func SendFile(postURL string, fileURL string, params map[string]string) (ret Htt
 		ret.Status = RetStatusFailed
 		ret.Message = err.Error()
 	} else {
-		ret.Status = RetStatusOK
-		ret.Message = string(resp_body)
+		json.Unmarshal([]byte(resp_body), &ret)
 	}
 	return ret
 

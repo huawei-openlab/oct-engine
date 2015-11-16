@@ -178,7 +178,7 @@ func (t *TestUnit) GetStatus() TestStatus {
 
 func (t *TestUnit) Apply() (ok bool) {
 	ok = true
-	if t.Status != TestStatusInit {
+	if t.Status != TestStatusInit && t.Status != TestStatusAllocateFailed {
 		return false
 	}
 	t.Status = TestStatusAllocating
@@ -202,12 +202,14 @@ func (t *TestUnit) Apply() (ok bool) {
 		t.Status = TestStatusAllocateFailed
 		ok = false
 	}
+	fmt.Println("OS Apply", t, "----", ok)
 	return ok
 }
 
 func (t *TestUnit) Deploy() bool {
 	resInterface, ok := DBGet(DBResource, t.resourceID)
 	if !ok {
+		fmt.Println("Cannot find the resource ", t.resourceID)
 		return false
 	}
 	res, _ := ResourceFromString(resInterface.String())
@@ -215,6 +217,7 @@ func (t *TestUnit) Deploy() bool {
 	params := make(map[string]string)
 	params["id"] = t.schedulerID
 	ret := SendFile(deployURL, t.bundleURL, params)
+	fmt.Println("Deploy result ", ret)
 	if ret.Status == RetStatusOK {
 		return true
 	}
@@ -222,7 +225,7 @@ func (t *TestUnit) Deploy() bool {
 }
 
 func (t *TestUnit) Run() bool {
-	if t.Status != TestStatusDeployed {
+	if t.Status != TestStatusDeployed && t.Status != TestStatusRunFailed {
 		return false
 	}
 	t.Status = TestStatusRunning
@@ -236,7 +239,7 @@ func (t *TestUnit) Run() bool {
 }
 
 func (t *TestUnit) Collect() bool {
-	if t.Status != TestStatusRun {
+	if t.Status != TestStatusRun && t.Status != TestStatusCollectFailed {
 		return false
 	}
 	t.Status = TestStatusCollecting

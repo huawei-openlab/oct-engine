@@ -33,11 +33,14 @@ func ReceiveTaskCommand(w http.ResponseWriter, r *http.Request) {
 	}
 	s, _ := liboct.SchedulerFromString(sInterface.String())
 
-	var cmd liboct.TestActionCommand
 	result, _ := ioutil.ReadAll(r.Body)
+	fmt.Println("Receive task Command ", string(result))
 	r.Body.Close()
+	/* Donnot use this now FIXME
+	var cmd liboct.TestActionCommand
 	json.Unmarshal([]byte(result), &cmd)
-	action, ok := liboct.TestActionFromString(cmd.Action)
+	*/
+	action, ok := liboct.TestActionFromString(string(result))
 	if !ok {
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = "Invalid action"
@@ -74,11 +77,14 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 
 	if s.Command(liboct.TestActionApply) {
 		if id, ok := liboct.DBAdd(liboct.DBScheduler, s); ok {
+			fmt.Println("Add ok ", id)
 			ret.Status = liboct.RetStatusOK
 			ret.Message = id
 			ret_string, _ := json.MarshalIndent(ret, "", "\t")
 			w.Write([]byte(ret_string))
 			return
+		} else {
+			fmt.Println("Failed to add db ", s)
 		}
 	}
 	ret.Status = liboct.RetStatusFailed
@@ -103,6 +109,7 @@ func init() {
 	}
 
 	liboct.DBRegist(liboct.DBResource)
+	liboct.DBRegist(liboct.DBScheduler)
 	if len(pubConfig.ServerListFile) == 0 {
 		return
 	}

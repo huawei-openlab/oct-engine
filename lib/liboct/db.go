@@ -107,6 +107,10 @@ func DBAdd(collect DBCollectName, val DBInterface) (string, bool) {
 		res, _ := ResourceFromString(val.String())
 		res.SetID(id)
 		OCTDB[collect][id] = res
+	case DBScheduler:
+		s, _ := SchedulerFromString(val.String())
+		s.SetID(id)
+		OCTDB[collect][id] = s
 	}
 
 	return id, true
