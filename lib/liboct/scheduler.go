@@ -31,6 +31,9 @@ func SchedulerFromString(val string) (s Scheduler, err error) {
 func (s *Scheduler) SetID(id string) {
 	if id != s.ID {
 		s.ID = id
+		for index := 0; index < len(s.Case.Units); index++ {
+			s.Case.Units[index].SetSchedulerID(id)
+		}
 	}
 }
 

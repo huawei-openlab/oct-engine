@@ -5,6 +5,7 @@ package liboct
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 )
 
 type TestStatus string
@@ -42,6 +43,7 @@ const (
 )
 
 func TestActionFromString(val string) (TestAction, bool) {
+	fmt.Println("test action get ", val)
 	switch val {
 	case "apply":
 		return TestActionApply, true
@@ -72,11 +74,11 @@ type TestUnit struct {
 	//the id of the unit: use less for now, FIXME
 	id string
 	//the id of the scheduler
-	schedulerID string
+	SchedulerID string
 	//runtime ID, used to keep track of the relevant hostTest/container
-	resourceID string
+	ResourceID string
 	//TODO: use the test bundle URL, but should put files into a smaller piece
-	bundleURL string
+	BundleURL string
 }
 
 type TestCommand struct {
@@ -137,33 +139,33 @@ func (t *TestUnit) GetID() string {
 }
 
 func (t *TestUnit) SetSchedulerID(id string) {
-	if id != t.schedulerID {
-		t.schedulerID = id
+	if id != t.SchedulerID {
+		t.SchedulerID = id
 	}
 }
 
 func (t *TestUnit) GetSchedulerID() string {
-	return t.schedulerID
+	return t.SchedulerID
 }
 
 func (t *TestUnit) SetResourceID(id string) {
-	if id != t.resourceID {
-		t.resourceID = id
+	if id != t.ResourceID {
+		t.ResourceID = id
 	}
 }
 
 func (t *TestUnit) GetResourceID() string {
-	return t.resourceID
+	return t.ResourceID
 }
 
 func (t *TestUnit) SetBundleURL(url string) {
-	if url != t.bundleURL {
-		t.bundleURL = url
+	if url != t.BundleURL {
+		t.BundleURL = url
 	}
 }
 
 func (t *TestUnit) GetBundleURL() string {
-	return t.bundleURL
+	return t.BundleURL
 }
 
 func (t *TestUnit) SetStatus(s TestStatus) {
@@ -195,7 +197,7 @@ func (t *TestUnit) Apply() (ok bool) {
 		}
 	}
 	if len(id) > 0 {
-		t.resourceID = id
+		t.ResourceID = id
 		t.Status = TestStatusAllocated
 		ok = true
 	} else {
@@ -207,20 +209,32 @@ func (t *TestUnit) Apply() (ok bool) {
 }
 
 func (t *TestUnit) Deploy() bool {
-	resInterface, ok := DBGet(DBResource, t.resourceID)
+	resInterface, ok := DBGet(DBResource, t.ResourceID)
 	if !ok {
-		fmt.Println("Cannot find the resource ", t.resourceID)
+		fmt.Println("Cannot find the resource ", t.ResourceID)
 		return false
 	}
 	res, _ := ResourceFromString(resInterface.String())
 	deployURL := fmt.Sprintf("%s/task", res.URL)
 	params := make(map[string]string)
-	params["id"] = t.schedulerID
-	ret := SendFile(deployURL, t.bundleURL, params)
+	params["id"] = t.SchedulerID
+	fmt.Println("Test Unit deploy ", deployURL, t.BundleURL, t.SchedulerID)
+
+	tarURL := fmt.Sprintf("%s.tar.gz", t.BundleURL)
+	_, err := os.Stat(tarURL)
+	if err != nil {
+		files := GetDirFiles(t.BundleURL, "")
+		tarURL = TarFileList(files, t.BundleURL, "")
+	}
+	ret := SendFile(deployURL, tarURL, params)
 	fmt.Println("Deploy result ", ret)
 	if ret.Status == RetStatusOK {
-		return true
+		if t.command(TestActionDeploy) {
+			t.Status = TestStatusDeployed
+			return true
+		}
 	}
+	t.Status = TestStatusDeployFailed
 	return false
 }
 
@@ -265,7 +279,7 @@ func (t *TestUnit) Destroy() bool {
 }
 
 func (t *TestUnit) command(action TestAction) bool {
-	resInterface, ok := DBGet(DBResource, t.resourceID)
+	resInterface, ok := DBGet(DBResource, t.ResourceID)
 	if !ok {
 		return false
 	}
@@ -285,9 +299,10 @@ func (t *TestUnit) command(action TestAction) bool {
 	}
 
 	res, _ := ResourceFromString(resInterface.String())
-	deployURL := fmt.Sprintf("%s/task/%s", res.URL, t.schedulerID)
+	deployURL := fmt.Sprintf("%s/task/%s", res.URL, t.SchedulerID)
 
 	ret := SendCommand(deployURL, []byte(cmd.String()))
+	fmt.Println("Send Command ", deployURL, cmd.String())
 	if ret.Status == RetStatusOK {
 		return true
 	}

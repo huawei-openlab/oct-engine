@@ -9,6 +9,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
+	"strings"
 )
 
 const SchedularCacheDir = "/tmp/.test_schedular_cache"
@@ -57,26 +59,42 @@ func ReceiveTaskCommand(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(ret_string))
 }
 
+// Since the sheduler ID is got after receiving the test files
+// we need to move it to a better place
+// /tmp/.../A.tar.gz --> /tmp/.../id/A.tar.gz
+func updateSchedulerBundle(id string, oldURL string) {
+	sInterface, _ := liboct.DBGet(liboct.DBScheduler, id)
+	s, _ := liboct.SchedulerFromString(sInterface.String())
+	dir := path.Dir(oldURL)
+	newURL := fmt.Sprintf("%s/%s", path.Join(dir, id), path.Base(oldURL))
+	liboct.PreparePath(path.Join(dir, id), "")
+	os.Rename(strings.TrimSuffix(oldURL, ".tar.gz"), strings.TrimSuffix(newURL, ".tar.gz"))
+	os.Rename(oldURL, newURL)
+	//bundleURL is the directory of the bundle
+	s.Case.SetBundleURL(strings.TrimSuffix(newURL, ".tar.gz"))
+	liboct.DBUpdate(liboct.DBScheduler, id, s)
+}
+
 func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("ReceiveTask begin")
 	var ret liboct.HttpRet
 	var tc liboct.TestCase
 	realURL, _ := liboct.ReceiveFile(w, r, SchedularCacheDir)
 	tc, err := liboct.CaseFromTar(realURL, "")
-	fmt.Println(realURL)
+	fmt.Println("Receive task after file", realURL, tc)
 	if err != nil {
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = err.Error()
 		ret_string, _ := json.MarshalIndent(ret, "", "\t")
 		w.Write([]byte(ret_string))
 		return
-	} else {
 	}
 
 	s, _ := liboct.SchedulerNew(tc)
 
 	if s.Command(liboct.TestActionApply) {
 		if id, ok := liboct.DBAdd(liboct.DBScheduler, s); ok {
+			updateSchedulerBundle(id, realURL)
 			fmt.Println("Add ok ", id)
 			ret.Status = liboct.RetStatusOK
 			ret.Message = id

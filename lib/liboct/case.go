@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 )
 
 const (
@@ -44,7 +45,7 @@ type TestCase struct {
 	//This is not necessary, but since the developer names the bundle,
 	//just don't want to miss it
 	BundleName string
-	//donnot expose to the public
+	/* the dir */
 	BundleURL string
 }
 
@@ -117,8 +118,7 @@ func CaseFromBundle(BundleURL string) (tc TestCase, err error) {
 	if err = json.NewDecoder(cf).Decode(&tc); err != nil {
 		return tc, err
 	}
-	tc.BundleURL = BundleURL
-	tc.BundleName = path.Base(tc.BundleURL)
+	tc.SetBundleURL(BundleURL)
 	return tc, nil
 }
 
@@ -126,6 +126,9 @@ func (tc *TestCase) SetBundleURL(bundle string) {
 	if bundle != tc.BundleURL {
 		tc.BundleURL = bundle
 		tc.BundleName = path.Base(tc.BundleURL)
+		for index := 0; index < len(tc.Units); index++ {
+			tc.Units[index].SetBundleURL(bundle)
+		}
 	}
 }
 
@@ -228,6 +231,11 @@ func (tc *TestCase) generateBundleTar() string {
 
 //If bundleURL is nil, untar the bundle in the same dir
 func CaseFromTar(tarURL string, bundleURL string) (TestCase, error) {
-	UntarFile(tarURL, bundleURL)
-	return CaseFromBundle(bundleURL)
+	fmt.Println("Case from tar ", tarURL, bundleURL)
+	bundleDir := ""
+	if len(bundleURL) == 0 {
+		bundleDir = strings.TrimSuffix(tarURL, ".tar.gz")
+	}
+	UntarFile(tarURL, bundleDir)
+	return CaseFromBundle(bundleDir)
 }

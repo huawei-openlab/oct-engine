@@ -29,12 +29,11 @@ type HttpRet struct {
 }
 
 //When filename is null, we just want to prepare a pure directory
-func PreparePath(cachename string, filename string) (realurl string) {
-	var dir string
+func PreparePath(cachename string, filename string) (dir string) {
 	if filename == "" {
 		dir = cachename
 	} else {
-		realurl = path.Join(cachename, filename)
+		realurl := path.Join(cachename, filename)
 		dir = path.Dir(realurl)
 	}
 	p, err := os.Stat(dir)
@@ -43,9 +42,7 @@ func PreparePath(cachename string, filename string) (realurl string) {
 			os.MkdirAll(dir, 0777)
 		}
 	} else {
-		if p.IsDir() {
-			return realurl
-		} else {
+		if !p.IsDir() {
 			os.Remove(dir)
 			os.MkdirAll(dir, 0777)
 		}
@@ -54,6 +51,7 @@ func PreparePath(cachename string, filename string) (realurl string) {
 }
 
 func SendFile(postURL string, fileURL string, params map[string]string) (ret HttpRet) {
+	fmt.Println("Sendfile ", postURL, fileURL)
 	bodyBuf := &bytes.Buffer{}
 	bodyWriter := multipart.NewWriter(bodyBuf)
 	filename := path.Base(fileURL)
@@ -161,6 +159,7 @@ func ReceiveFile(w http.ResponseWriter, r *http.Request, cacheURL string) (realU
 	r.ParseMultipartForm(32 << 20)
 	file, handler, err := r.FormFile("tcfile")
 
+	fmt.Println("receive file ", cacheURL, " --  ", handler.Filename)
 	params = make(map[string]string)
 
 	if r.MultipartForm != nil {
@@ -176,13 +175,14 @@ func ReceiveFile(w http.ResponseWriter, r *http.Request, cacheURL string) (realU
 	}
 
 	defer file.Close()
-
+	var realDir string
 	//Receive to the cache/task_id dir
 	if val, ok := params["id"]; ok {
-		realURL = PreparePath(path.Join(cacheURL, val), handler.Filename)
+		realDir = PreparePath(path.Join(cacheURL, val), "")
 	} else {
-		realURL = PreparePath(cacheURL, handler.Filename)
+		realDir = PreparePath(cacheURL, "")
 	}
+	realURL = fmt.Sprintf("%s/%s", realDir, handler.Filename)
 	f, err := os.Create(realURL)
 	if err != nil {
 		fmt.Println("Cannot create the file ", realURL)
@@ -257,6 +257,7 @@ func TarDir(case_dir string) (tarURL string) {
 }
 
 func UntarFile(filename string, cacheURL string) {
+	fmt.Println("UntarFile ", filename, cacheURL)
 	_, err := os.Stat(filename)
 	if err != nil {
 		fmt.Println("cannot find the file ", filename)
@@ -286,7 +287,7 @@ func UntarFile(filename string, cacheURL string) {
 			panic(err)
 		}
 		targetURL := PreparePath(cacheURL, h.Name)
-		fw, err := os.OpenFile(targetURL, os.O_CREATE|os.O_WRONLY, os.FileMode(h.Mode))
+		fw, err := os.OpenFile(fmt.Sprintf("%s/%s", targetURL, h.Name), os.O_CREATE|os.O_WRONLY, os.FileMode(h.Mode))
 		if err != nil {
 			//Dir for example
 			continue

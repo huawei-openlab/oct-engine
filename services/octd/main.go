@@ -54,14 +54,15 @@ func GetResult(w http.ResponseWriter, r *http.Request) {
 
 func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
-	real_url, params := liboct.ReceiveFile(w, r, OCTDCacheDir)
+	realURL, params := liboct.ReceiveFile(w, r, OCTDCacheDir)
 
 	fmt.Println(params)
 
-	if val, ok := params["id"]; ok {
+	//TODO: add id to a database?
+	if _, ok := params["id"]; ok {
 		//The real url may not be the test case format, could be only files
-		if strings.HasSuffix(real_url, ".tar.gz") {
-			liboct.UntarFile(real_url, path.Join(OCTDCacheDir, val))
+		if strings.HasSuffix(realURL, ".tar.gz") {
+			liboct.UntarFile(realURL, strings.TrimSuffix(realURL, ".tar.gz"))
 		}
 		ret.Status = liboct.RetStatusOK
 	} else {
@@ -94,6 +95,7 @@ func GetWorkingDir(id string) string {
 func PostTaskAction(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
 	result, _ := ioutil.ReadAll(r.Body)
+	fmt.Println("Post task action ", string(result))
 	r.Body.Close()
 	cmd, err := liboct.ActionCommandFromString(string(result))
 	if err != nil {

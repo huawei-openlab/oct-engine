@@ -68,12 +68,11 @@ func (task *TestTask) Apply() (ok bool) {
 	params[SchedulerPriority] = strconv.Itoa(task.Priority)
 
 	postURL := fmt.Sprintf("%s/task", task.PostURL)
-	bundleURL := fmt.Sprintf("%s.tar.gz", task.BundleURL)
 
 	//DEBUG
-	fmt.Println("apply task: ", postURL, bundleURL)
+	fmt.Println("apply task: ", postURL, task.BundleURL)
 
-	ret := SendFile(postURL, bundleURL, params)
+	ret := SendFile(postURL, task.BundleURL, params)
 	if ret.Status == RetStatusOK {
 		task.SetSchedulerID(ret.Message)
 		task.PostURL = fmt.Sprintf("%s/task/%s", task.PostURL, task.GetSchedulerID())

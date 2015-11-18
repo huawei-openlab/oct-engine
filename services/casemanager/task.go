@@ -27,7 +27,7 @@ func AddTask(w http.ResponseWriter, r *http.Request) {
 	}
 	tc, _ := liboct.CaseFromString(caseInterface.String())
 
-	bundleURL := tc.GetBundleURL()
+	bundleURL := tc.GetBundleTarURL()
 	postURL := pubConfig.SchedulerURL
 	if task, ok := liboct.TestTaskNew(postURL, bundleURL, liboct.SchedulerDefaultPrio); ok {
 		id, _ := liboct.DBAdd(liboct.DBTask, task)
@@ -42,7 +42,7 @@ func AddTask(w http.ResponseWriter, r *http.Request) {
 
 func GetTaskStatus(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
-	id := r.URL.Query().Get(":ID")
+	id := r.URL.Query().Get(":TaskID")
 	if taskInterface, ok := liboct.DBGet(liboct.DBTask, id); ok {
 		ret.Status = liboct.RetStatusOK
 		ret.Data = taskInterface
@@ -66,7 +66,7 @@ func PostTaskAction(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(retInfo))
 		return
 	}
-	id := r.URL.Query().Get(":ID")
+	id := r.URL.Query().Get(":TaskID")
 	taskInterface, ok := liboct.DBGet(liboct.DBTask, id)
 	if !ok {
 		ret.Status = liboct.RetStatusFailed

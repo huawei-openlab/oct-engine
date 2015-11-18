@@ -79,9 +79,11 @@ func main() {
 
 	//Add a new task by the case id
 	mux.Get("/task", ListTasks)
+	//Add task : turn a case into a task, but donnot send to scheduler
 	mux.Post("/task", AddTask)
-	mux.Get("/task/:ID", GetTaskStatus)
-	mux.Post("/task/:ID", PostTaskAction)
+	mux.Get("/task/:TaskID", GetTaskStatus)
+	// apply/deploy/run/collect/destroy
+	mux.Post("/task/:TaskID", PostTaskAction)
 
 	http.Handle("/", mux)
 	fmt.Println("Listen to port ", port)
