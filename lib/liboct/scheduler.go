@@ -2,7 +2,6 @@ package liboct
 
 import (
 	"encoding/json"
-	"fmt"
 )
 
 type Scheduler struct {
@@ -62,14 +61,10 @@ func (s *Scheduler) Command(action TestAction) (err error) {
 		}
 
 		if err != nil {
-			return err
+			break
 		}
 	}
-	fmt.Println("Scheduler after ", action, ": ", s)
-	if len(s.ID) > 0 {
-		DBUpdate(DBScheduler, s.ID, s)
-	}
-	return nil
+	return err
 }
 
 func (s *Scheduler) GetStatus() TestStatus {

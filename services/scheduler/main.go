@@ -53,6 +53,7 @@ func ReceiveTaskCommand(w http.ResponseWriter, r *http.Request) {
 			ret.Status = liboct.RetStatusFailed
 			ret.Message = e.Error()
 		}
+		liboct.DBUpdate(liboct.DBScheduler, id, s)
 	}
 
 	ret_string, _ := json.MarshalIndent(ret, "", "\t")
@@ -81,7 +82,6 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 	var tc liboct.TestCase
 	realURL, _ := liboct.ReceiveFile(w, r, SchedularCacheDir)
 	tc, err := liboct.CaseFromTar(realURL, "")
-	fmt.Println("Receive task after file", realURL, tc)
 	if err != nil {
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = err.Error()
@@ -96,7 +96,6 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		if id, e := liboct.DBAdd(liboct.DBScheduler, s); e == nil {
 			updateSchedulerBundle(id, realURL)
-			fmt.Println("Add ok ", id)
 			ret.Status = liboct.RetStatusOK
 			ret.Message = id
 		} else {

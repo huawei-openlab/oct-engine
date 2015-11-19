@@ -123,7 +123,9 @@ func (t *TestUnit) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &v); err != nil {
 		return err
 	}
-	v.Status = TestStatusInit
+	if len(v.Status) == 0 {
+		v.Status = TestStatusInit
+	}
 	*t = TestUnit(v)
 	return nil
 
@@ -236,6 +238,7 @@ func (t *TestUnit) Deploy() error {
 }
 
 func (t *TestUnit) Run() error {
+	fmt.Println("TestUnit Run ", t)
 	if t.Status != TestStatusDeployed && t.Status != TestStatusRunFailed {
 		return errors.New(fmt.Sprintf("Cannot run the test when the current status is :%s.", t.Status))
 	}
@@ -276,6 +279,7 @@ func (t *TestUnit) Destroy() error {
 }
 
 func (t *TestUnit) command(action TestAction) error {
+	fmt.Println("Test Unit command ", action)
 	resInterface, err := DBGet(DBResource, t.ResourceID)
 	if err != nil {
 		return err
