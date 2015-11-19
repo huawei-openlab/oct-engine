@@ -2,6 +2,7 @@ package liboct
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 )
@@ -32,12 +33,15 @@ func TaskFromString(val string) (task TestTask, err error) {
 	return task, err
 }
 
-func TestTaskNew(postURL string, bundleURL string, prio int) (task TestTask, ok bool) {
+func TestTaskNew(postURL string, bundleURL string, prio int) (task TestTask, err error) {
+	if len(postURL) == 0 || len(bundleURL) == 0 {
+		return task, errors.New("The post url or bundle url cannot be nil")
+	}
 	task.PostURL = postURL
 	task.BundleURL = bundleURL
 	task.Status = TestStatusInit
 	task.Priority = prio
-	return task, true
+	return task, nil
 }
 
 func (task *TestTask) SetID(id string) {
@@ -60,9 +64,9 @@ func (task *TestTask) GetSchedulerID() string {
 	return task.SchedulerID
 }
 
-func (task *TestTask) Apply() (ok bool) {
+func (task *TestTask) Apply() error {
 	if task.Status != TestStatusInit && task.Status != TestStatusAllocateFailed {
-		return false
+		return errors.New(fmt.Sprintf("Cannot apply the resource in the status %s.", task.Status))
 	}
 	params := make(map[string]string)
 	params[SchedulerPriority] = strconv.Itoa(task.Priority)
@@ -78,117 +82,98 @@ func (task *TestTask) Apply() (ok bool) {
 		task.PostURL = fmt.Sprintf("%s/task/%s", task.PostURL, task.GetSchedulerID())
 		task.Status = TestStatusAllocated
 		fmt.Println("apply return : ", task, ret.Message)
-		ok = true
+		return nil
 	} else {
 		task.Status = TestStatusAllocateFailed
-		ok = false
 	}
-	return ok
+	return errors.New("Failed to apply.")
 }
 
 //Donnot need to send files now, since it will be done by the Apply function
-func (task *TestTask) Deploy() (ok bool) {
+func (task *TestTask) Deploy() error {
 	if task.Status != TestStatusAllocated && task.Status != TestStatusDeployFailed {
-		return false
+		return errors.New(fmt.Sprintf("Cannot deploy the test in the status %s.", task.Status))
 	}
 	task.Status = TestStatusDeploying
 	ret := SendCommand(task.PostURL, []byte(TestActionDeploy))
 	fmt.Println("Deploy : ", task.PostURL, ret)
 	if ret.Status == RetStatusOK {
 		task.Status = TestStatusDeployed
-		ok = true
+		return nil
 	} else {
 		task.Status = TestStatusDeployFailed
-		ok = false
 	}
-	return ok
+	return errors.New("Failed to deploy.")
 }
 
-func (task *TestTask) Run() (ok bool) {
+func (task *TestTask) Run() error {
 	if task.Status != TestStatusDeployed && task.Status != TestStatusRunFailed {
-		return false
+		return errors.New(fmt.Sprintf("Cannot run the test in the status %s.", task.Status))
 	}
 	task.Status = TestStatusRunning
 	ret := SendCommand(task.PostURL, []byte(TestActionRun))
 	fmt.Println("Run ", ret)
 	if ret.Status == RetStatusOK {
 		task.Status = TestStatusRun
-		ok = true
+		return nil
 	} else {
 		task.Status = TestStatusRunFailed
-		ok = false
 	}
-	return ok
+	return errors.New("Failed to run.")
 }
 
-func (task *TestTask) Collect() (ok bool) {
+func (task *TestTask) Collect() error {
 	if task.Status != TestStatusRun && task.Status != TestStatusCollectFailed {
-		return false
+		return errors.New(fmt.Sprintf("Cannot collect the report in the status %s.", task.Status))
 	}
 	task.Status = TestStatusCollecting
 	ret := SendCommand(task.PostURL, []byte(TestActionCollect))
 	fmt.Println("Collect ", ret)
 	if ret.Status == RetStatusOK {
 		task.Status = TestStatusCollected
-		ok = true
+		return nil
 	} else {
 		task.Status = TestStatusCollectFailed
-		ok = false
 	}
-	return ok
+	return errors.New("Failed to collect.")
 }
 
-func (task *TestTask) Destroy() (ok bool) {
+func (task *TestTask) Destroy() error {
 	task.Status = TestStatusDestroying
 	ret := SendCommand(task.PostURL, []byte(TestActionDestroy))
 	if ret.Status == RetStatusOK {
 		task.Status = TestStatusFinish
-		ok = true
+		return nil
 	} else {
 		task.Status = TestStatusDestroyFailed
-		ok = false
 	}
-	return ok
+	return errors.New("Failed to Destroy.")
 }
 
-func (task *TestTask) Command(action TestAction) (ok bool) {
-	ok = false
+func (task *TestTask) Command(action TestAction) (err error) {
 	switch action {
 	case TestActionApply:
-		ok = task.Apply()
+		err = task.Apply()
 	case TestActionDeploy:
-		ok = task.Deploy()
+		err = task.Deploy()
 	case TestActionRun:
-		ok = task.Run()
+		err = task.Run()
 	case TestActionCollect:
-		ok = task.Collect()
+		err = task.Collect()
 	case TestActionDestroy:
-		ok = task.Destroy()
+		err = task.Destroy()
 	default:
-		fmt.Println("The action is not supported")
-		ok = false
+		return errors.New(fmt.Sprintf("The action %s is not supported.", action))
 	}
 	fmt.Println("Command ", action, "  Update  ", task)
 	DBUpdate(DBTask, task.ID, task)
-	return ok
+	return nil
 }
 
-func (task *TestTask) Loop() (needContinue bool) {
-	needContinue = false
+func (task *TestTask) Loop() (needContinue error) {
 	switch task.Status {
 	case TestStatusInit:
-		task.Status = TestStatusAllocating
-		params := make(map[string]string)
-		params[TestActionID] = task.ID
-		ret := SendFile(task.PostURL, task.BundleURL, params)
-		fmt.Println("Run send file : ", task.PostURL, task.BundleURL)
-		if ret.Status == RetStatusOK {
-			task.ID = ret.Message
-			task.PostURL = fmt.Sprintf("%s/%s", task.PostURL, task.ID)
-			task.Status = TestStatusAllocated
-		} else {
-			task.Status = TestStatusAllocateFailed
-		}
+		needContinue = task.Apply()
 	case TestStatusAllocated:
 		needContinue = task.Deploy()
 	case TestStatusDeployed:
@@ -196,8 +181,9 @@ func (task *TestTask) Loop() (needContinue bool) {
 	case TestStatusRun:
 		needContinue = task.Collect()
 	case TestStatusCollected:
-		task.Destroy()
-		needContinue = false
+		needContinue = task.Destroy()
+	default:
+		needContinue = nil
 	}
 	DBUpdate(DBTask, task.ID, task)
 	return needContinue

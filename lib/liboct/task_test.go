@@ -36,39 +36,39 @@ func TestTaskString(t *testing.T) {
 func TestTaskLoop(t *testing.T) {
 	task := DemoTask()
 	needContinue := task.Loop()
-	if needContinue != true {
+	if needContinue != nil {
 		t.Log("Task Loop break successful")
 	} else {
 		t.Error("Task Loop break failed")
 	}
 
 	task.Status = TestStatusAllocated
-	ok := task.Deploy()
-	if ok != true {
+	err := task.Deploy()
+	if err != nil {
 		t.Log("Task Deploy failed successful")
 	} else {
 		t.Error("Task Deploy failed failed")
 	}
 
 	task.Status = TestStatusDeployed
-	ok = task.Run()
-	if ok != true {
+	err = task.Run()
+	if err != nil {
 		t.Log("Task Run failed successful")
 	} else {
 		t.Error("Task Run failed failed")
 	}
 
 	task.Status = TestStatusRun
-	ok = task.Collect()
-	if ok != true {
+	err = task.Collect()
+	if err != nil {
 		t.Log("Task Collect failed successful")
 	} else {
 		t.Error("Task Collect failed failed")
 	}
 
 	task.Status = TestStatusCollected
-	ok = task.Destroy()
-	if ok != true {
+	err = task.Destroy()
+	if err != nil {
 		t.Log("Task Destroy failed successful")
 	} else {
 		t.Error("Task Destroy failed failed")

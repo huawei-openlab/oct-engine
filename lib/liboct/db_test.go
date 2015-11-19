@@ -6,15 +6,15 @@ import (
 )
 
 func TestDBRegist(t *testing.T) {
-	val := DBRegist(DBRepo)
-	if val {
+	err := DBRegist(DBRepo)
+	if err == nil {
 		t.Log("DB Regist OK successful!")
 	} else {
 		t.Error("DB Regist OK failed!")
 	}
 
-	val = DBRegist(DBRepo)
-	if !val {
+	err = DBRegist(DBRepo)
+	if err != nil {
 		t.Log("DB Regist Failed successful!")
 	} else {
 		t.Error("DB Regist Failed failed!")
@@ -28,15 +28,15 @@ func TestDBGet(t *testing.T) {
 	repo.Name = "repo name"
 	id, _ := DBAdd(DBRepo, repo)
 
-	_, ok := DBGet(DBRepo, id)
-	if ok {
+	_, err := DBGet(DBRepo, id)
+	if err == nil {
 		t.Log("DBGet OK successful !")
 	} else {
 		t.Error("DBGet OK failed !")
 	}
 
-	_, ok = DBGet(DBRepo, "invalid")
-	if !ok {
+	_, err = DBGet(DBRepo, "invalid")
+	if err != nil {
 		t.Log("DBGet Failed successful !")
 	} else {
 		t.Error("DBGet Failed failed !")
@@ -51,7 +51,7 @@ func TestDBUpdate(t *testing.T) {
 	id, _ := DBAdd(DBRepo, repo)
 
 	repo.Name = "updated name"
-	if DBUpdate(DBRepo, id, repo) {
+	if err := DBUpdate(DBRepo, id, repo); err == nil {
 		t.Log("DBUpdate OK successful !")
 	} else {
 		t.Error("DBUpdate Failed failed !")

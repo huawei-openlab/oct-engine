@@ -78,12 +78,12 @@ func PostResource(w http.ResponseWriter, r *http.Request) {
 		ret.Message = err.Error()
 	} else {
 		lock.Lock()
-		if id, ok := liboct.DBAdd(liboct.DBResource, res); ok {
+		if id, e := liboct.DBAdd(liboct.DBResource, res); e == nil {
 			ret.Status = "OK"
 			ret.Message = fmt.Sprintf("Success in adding the resource: %s ", id)
 		} else {
 			ret.Status = liboct.RetStatusFailed
-			ret.Message = "this resource is already exist"
+			ret.Message = e.Error()
 		}
 		lock.Unlock()
 	}
@@ -95,12 +95,12 @@ func DeleteResource(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
 	id := r.URL.Query().Get("ID")
 	lock.Lock()
-	if liboct.DBRemove(liboct.DBResource, id) {
+	if err := liboct.DBRemove(liboct.DBResource, id); err == nil {
 		ret.Status = liboct.RetStatusOK
 		ret.Message = "Success in remove the resource"
 	} else {
 		ret.Status = liboct.RetStatusFailed
-		ret.Message = "Cannot find the resource"
+		ret.Message = err.Error()
 	}
 	lock.Unlock()
 	ret_body, _ := json.MarshalIndent(ret, "", "\t")

@@ -4,6 +4,7 @@ package liboct
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 )
@@ -42,21 +43,21 @@ const (
 	TestActionDestroy            = "destroy"
 )
 
-func TestActionFromString(val string) (TestAction, bool) {
+func TestActionFromString(val string) (TestAction, error) {
 	fmt.Println("test action get ", val)
 	switch val {
 	case "apply":
-		return TestActionApply, true
+		return TestActionApply, nil
 	case "deploy":
-		return TestActionDeploy, true
+		return TestActionDeploy, nil
 	case "run":
-		return TestActionRun, true
+		return TestActionRun, nil
 	case "collect":
-		return TestActionCollect, true
+		return TestActionCollect, nil
 	case "destroy":
-		return TestActionDestroy, true
+		return TestActionDestroy, nil
 	}
-	return TestActionAction, false
+	return TestActionAction, errors.New(fmt.Sprintf("Invalid action %s.", val))
 }
 
 type TestUnit struct {
@@ -178,10 +179,9 @@ func (t *TestUnit) GetStatus() TestStatus {
 	return t.Status
 }
 
-func (t *TestUnit) Apply() (ok bool) {
-	ok = true
+func (t *TestUnit) Apply() error {
 	if t.Status != TestStatusInit && t.Status != TestStatusAllocateFailed {
-		return false
+		return errors.New(fmt.Sprintf("Cannot apply the test resource when the current status is :%s.", t.Status))
 	}
 	t.Status = TestStatusAllocating
 
@@ -199,20 +199,17 @@ func (t *TestUnit) Apply() (ok bool) {
 	if len(id) > 0 {
 		t.ResourceID = id
 		t.Status = TestStatusAllocated
-		ok = true
+		return nil
 	} else {
 		t.Status = TestStatusAllocateFailed
-		ok = false
 	}
-	fmt.Println("OS Apply", t, "----", ok)
-	return ok
+	return errors.New("Cannot apply the resource")
 }
 
-func (t *TestUnit) Deploy() bool {
-	resInterface, ok := DBGet(DBResource, t.ResourceID)
-	if !ok {
-		fmt.Println("Cannot find the resource ", t.ResourceID)
-		return false
+func (t *TestUnit) Deploy() error {
+	resInterface, err := DBGet(DBResource, t.ResourceID)
+	if err != nil {
+		return err
 	}
 	res, _ := ResourceFromString(resInterface.String())
 	deployURL := fmt.Sprintf("%s/task", res.URL)
@@ -221,7 +218,7 @@ func (t *TestUnit) Deploy() bool {
 	fmt.Println("Test Unit deploy ", deployURL, t.BundleURL, t.SchedulerID)
 
 	tarURL := fmt.Sprintf("%s.tar.gz", t.BundleURL)
-	_, err := os.Stat(tarURL)
+	_, err = os.Stat(tarURL)
 	if err != nil {
 		files := GetDirFiles(t.BundleURL, "")
 		tarURL = TarFileList(files, t.BundleURL, "")
@@ -229,59 +226,59 @@ func (t *TestUnit) Deploy() bool {
 	ret := SendFile(deployURL, tarURL, params)
 	fmt.Println("Deploy result ", ret)
 	if ret.Status == RetStatusOK {
-		if t.command(TestActionDeploy) {
+		if err := t.command(TestActionDeploy); err == nil {
 			t.Status = TestStatusDeployed
-			return true
+			return nil
 		}
 	}
 	t.Status = TestStatusDeployFailed
-	return false
+	return errors.New(ret.Message)
 }
 
-func (t *TestUnit) Run() bool {
+func (t *TestUnit) Run() error {
 	if t.Status != TestStatusDeployed && t.Status != TestStatusRunFailed {
-		return false
+		return errors.New(fmt.Sprintf("Cannot run the test when the current status is :%s.", t.Status))
 	}
 	t.Status = TestStatusRunning
-	ok := t.command(TestActionRun)
-	if ok {
+	err := t.command(TestActionRun)
+	if err == nil {
 		t.Status = TestStatusRun
 	} else {
 		t.Status = TestStatusRunFailed
 	}
-	return ok
+	return err
 }
 
-func (t *TestUnit) Collect() bool {
+func (t *TestUnit) Collect() error {
 	if t.Status != TestStatusRun && t.Status != TestStatusCollectFailed {
-		return false
+		return errors.New(fmt.Sprintf("Cannot collect the report when the current status is :%s.", t.Status))
 	}
 	t.Status = TestStatusCollecting
-	ok := t.command(TestActionCollect)
-	if ok {
+	err := t.command(TestActionCollect)
+	if err == nil {
 		t.Status = TestStatusCollected
 	} else {
 		t.Status = TestStatusCollectFailed
 	}
-	return ok
+	return err
 }
 
-func (t *TestUnit) Destroy() bool {
+func (t *TestUnit) Destroy() error {
 	t.Status = TestStatusDestroying
-	ok := t.command(TestActionDestroy)
+	err := t.command(TestActionDestroy)
 	//TODO After destroy, should release the resource!
-	if ok {
+	if err == nil {
 		t.Status = TestStatusFinish
 	} else {
 		t.Status = TestStatusDestroyFailed
 	}
-	return ok
+	return err
 }
 
-func (t *TestUnit) command(action TestAction) bool {
-	resInterface, ok := DBGet(DBResource, t.ResourceID)
-	if !ok {
-		return false
+func (t *TestUnit) command(action TestAction) error {
+	resInterface, err := DBGet(DBResource, t.ResourceID)
+	if err != nil {
+		return err
 	}
 
 	var cmd TestActionCommand
@@ -295,7 +292,7 @@ func (t *TestUnit) command(action TestAction) bool {
 		//TODO: the user should just define the log url, and the oct compose a new command
 		cmd.Command = t.Commands.Collect
 	default:
-		return false
+		return errors.New(fmt.Sprintf("The action '%s' is not support.", action))
 	}
 
 	res, _ := ResourceFromString(resInterface.String())
@@ -304,7 +301,7 @@ func (t *TestUnit) command(action TestAction) bool {
 	ret := SendCommand(deployURL, []byte(cmd.String()))
 	fmt.Println("Send Command ", deployURL, cmd.String())
 	if ret.Status == RetStatusOK {
-		return true
+		return nil
 	}
-	return false
+	return errors.New(fmt.Sprintf("Failed to send the '%s' : %s.", action, ret.Message))
 }

@@ -17,10 +17,10 @@ func AddTask(w http.ResponseWriter, r *http.Request) {
 	r.Body.Close()
 
 	caseID := string(result)
-	caseInterface, ok := liboct.DBGet(liboct.DBCase, caseID)
-	if !ok {
+	caseInterface, err := liboct.DBGet(liboct.DBCase, caseID)
+	if err != nil {
 		ret.Status = liboct.RetStatusFailed
-		ret.Message = "Invalid case id"
+		ret.Message = err.Error()
 		retInfo, _ := json.MarshalIndent(ret, "", "\t")
 		w.Write([]byte(retInfo))
 		return
@@ -29,12 +29,13 @@ func AddTask(w http.ResponseWriter, r *http.Request) {
 
 	bundleURL := tc.GetBundleTarURL()
 	postURL := pubConfig.SchedulerURL
-	if task, ok := liboct.TestTaskNew(postURL, bundleURL, liboct.SchedulerDefaultPrio); ok {
+	if task, err := liboct.TestTaskNew(postURL, bundleURL, liboct.SchedulerDefaultPrio); err == nil {
 		id, _ := liboct.DBAdd(liboct.DBTask, task)
 		ret.Status = liboct.RetStatusOK
 		ret.Message = id
 	} else {
 		ret.Status = liboct.RetStatusFailed
+		ret.Message = err.Error()
 	}
 	retInfo, _ := json.MarshalIndent(ret, "", "\t")
 	w.Write([]byte(retInfo))
@@ -43,7 +44,7 @@ func AddTask(w http.ResponseWriter, r *http.Request) {
 func GetTaskStatus(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
 	id := r.URL.Query().Get(":TaskID")
-	if taskInterface, ok := liboct.DBGet(liboct.DBTask, id); ok {
+	if taskInterface, err := liboct.DBGet(liboct.DBTask, id); err == nil {
 		ret.Status = liboct.RetStatusOK
 		ret.Data = taskInterface
 	} else {
@@ -58,30 +59,30 @@ func PostTaskAction(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
 	result, _ := ioutil.ReadAll(r.Body)
 	r.Body.Close()
-	action, ok := liboct.TestActionFromString(string(result))
-	if !ok {
+	action, err := liboct.TestActionFromString(string(result))
+	if err != nil {
 		ret.Status = liboct.RetStatusFailed
-		ret.Message = "Invalid action, should limit to 'deploy,run,collect and destroy'"
+		ret.Message = err.Error()
 		retInfo, _ := json.MarshalIndent(ret, "", "\t")
 		w.Write([]byte(retInfo))
 		return
 	}
 	id := r.URL.Query().Get(":TaskID")
-	taskInterface, ok := liboct.DBGet(liboct.DBTask, id)
-	if !ok {
+	taskInterface, err := liboct.DBGet(liboct.DBTask, id)
+	if err != nil {
 		ret.Status = liboct.RetStatusFailed
-		ret.Message = "Cannot find the task, wrong ID provided"
+		ret.Message = err.Error()
 		retInfo, _ := json.MarshalIndent(ret, "", "\t")
 		w.Write([]byte(retInfo))
 		return
 	}
 
 	task, _ := liboct.TaskFromString(taskInterface.String())
-	if task.Command(action) {
+	if e := task.Command(action); e == nil {
 		ret.Status = liboct.RetStatusOK
 	} else {
 		ret.Status = liboct.RetStatusFailed
-		ret.Message = "Failed to call the action"
+		ret.Message = e.Error()
 	}
 	retInfo, _ := json.MarshalIndent(ret, "", "\t")
 	w.Write([]byte(retInfo))

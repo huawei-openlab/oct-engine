@@ -25,10 +25,10 @@ type SchedulerConfig struct {
 func ReceiveTaskCommand(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
 	id := r.URL.Query().Get(":ID")
-	sInterface, ok := liboct.DBGet(liboct.DBScheduler, id)
-	if !ok {
+	sInterface, err := liboct.DBGet(liboct.DBScheduler, id)
+	if err != nil {
 		ret.Status = liboct.RetStatusFailed
-		ret.Message = "Invalid task id"
+		ret.Message = err.Error()
 		ret_string, _ := json.MarshalIndent(ret, "", "\t")
 		w.Write([]byte(ret_string))
 		return
@@ -42,16 +42,16 @@ func ReceiveTaskCommand(w http.ResponseWriter, r *http.Request) {
 	var cmd liboct.TestActionCommand
 	json.Unmarshal([]byte(result), &cmd)
 	*/
-	action, ok := liboct.TestActionFromString(string(result))
-	if !ok {
+	action, err := liboct.TestActionFromString(string(result))
+	if err != nil {
 		ret.Status = liboct.RetStatusFailed
-		ret.Message = "Invalid action"
+		ret.Message = err.Error()
 	} else {
-		if s.Command(action) {
+		if e := s.Command(action); e == nil {
 			ret.Status = liboct.RetStatusOK
 		} else {
 			ret.Status = liboct.RetStatusFailed
-			ret.Message = "Failed to run the action"
+			ret.Message = e.Error()
 		}
 	}
 
@@ -92,21 +92,21 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 
 	s, _ := liboct.SchedulerNew(tc)
 
-	if s.Command(liboct.TestActionApply) {
-		if id, ok := liboct.DBAdd(liboct.DBScheduler, s); ok {
+	err = s.Command(liboct.TestActionApply)
+	if err == nil {
+		if id, e := liboct.DBAdd(liboct.DBScheduler, s); e == nil {
 			updateSchedulerBundle(id, realURL)
 			fmt.Println("Add ok ", id)
 			ret.Status = liboct.RetStatusOK
 			ret.Message = id
-			ret_string, _ := json.MarshalIndent(ret, "", "\t")
-			w.Write([]byte(ret_string))
-			return
 		} else {
-			fmt.Println("Failed to add db ", s)
+			ret.Status = liboct.RetStatusFailed
+			ret.Message = e.Error()
 		}
+	} else {
+		ret.Status = liboct.RetStatusFailed
+		ret.Message = err.Error()
 	}
-	ret.Status = liboct.RetStatusFailed
-	ret.Message = "Failed in allocate the resource"
 	ret_string, _ := json.MarshalIndent(ret, "", "\t")
 	w.Write([]byte(ret_string))
 	return
@@ -144,7 +144,7 @@ func init() {
 	}
 
 	for index := 0; index < len(rl); index++ {
-		if _, ok := liboct.DBAdd(liboct.DBResource, rl[index]); ok {
+		if _, e := liboct.DBAdd(liboct.DBResource, rl[index]); e == nil {
 			fmt.Println(rl[index])
 		}
 	}

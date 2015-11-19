@@ -1,6 +1,7 @@
 package liboct
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
@@ -48,40 +49,44 @@ func DBGenerateID(collect DBCollectName, val string) string {
 	return MD5(fmt.Sprintf("%d-%s", time.Now().Unix(), val))
 }
 
-func DBCollectExist(collect DBCollectName) bool {
+func DBCollectExist(collect DBCollectName) error {
 	if OCTDB == nil {
-		return false
+		return errors.New("The Database is not initialized.")
 	}
-	_, ok := OCTDB[collect]
-	return ok
+	if _, ok := OCTDB[collect]; ok {
+		return nil
+	}
+
+	return errors.New(fmt.Sprintf("The collect %s is not exist.", collect))
 }
 
-func DBRegist(collect DBCollectName) bool {
+func DBRegist(collect DBCollectName) error {
 	if OCTDB == nil {
 		OCTDB = make(map[DBCollectName](map[string]DBInterface))
 	}
 	_, ok := OCTDB[collect]
 	if ok {
-		//fmt.Println("The collect is already registed, donnot do it twice")
-		return false
+		return errors.New("The collect is already registed, donnot do it twice.")
 	} else {
 		OCTDB[collect] = make(map[string]DBInterface)
 	}
-	return true
+	return nil
 }
 
-func DBGet(collect DBCollectName, id string) (DBInterface, bool) {
-	if !DBCollectExist(collect) {
-		return nil, false
+func DBGet(collect DBCollectName, id string) (DBInterface, error) {
+	if err := DBCollectExist(collect); err != nil {
+		return nil, err
 	}
 
-	val, ok := OCTDB[collect][id]
-	return val, ok
+	if val, ok := OCTDB[collect][id]; ok {
+		return val, nil
+	}
+	return nil, errors.New(fmt.Sprintf("Cannot find %s in the collect %s", id, collect))
 }
 
-func DBAdd(collect DBCollectName, val DBInterface) (string, bool) {
-	if !DBCollectExist(collect) {
-		return "", false
+func DBAdd(collect DBCollectName, val DBInterface) (string, error) {
+	if err := DBCollectExist(collect); err != nil {
+		return "", err
 	}
 
 	id := DBGenerateID(collect, val.String())
@@ -113,27 +118,27 @@ func DBAdd(collect DBCollectName, val DBInterface) (string, bool) {
 		OCTDB[collect][id] = s
 	}
 
-	return id, true
+	return id, nil
 }
 
-func DBUpdate(collect DBCollectName, id string, val DBInterface) bool {
-	if !DBCollectExist(collect) {
-		return false
+func DBUpdate(collect DBCollectName, id string, val DBInterface) error {
+	if err := DBCollectExist(collect); err != nil {
+		return err
 	}
-	_, ok := OCTDB[collect][id]
-	if ok {
+	if _, ok := OCTDB[collect][id]; ok {
 		OCTDB[collect][id] = val
+		return nil
 	}
 
-	return ok
+	return errors.New(fmt.Sprintf("Cannot find the %s in collect %s.", id, collect))
 }
 
-func DBRemove(collect DBCollectName, id string) bool {
-	if !DBCollectExist(collect) {
-		return false
+func DBRemove(collect DBCollectName, id string) error {
+	if err := DBCollectExist(collect); err != nil {
+		return err
 	}
 	delete(OCTDB[collect], id)
-	return true
+	return nil
 }
 
 func DBLookup(collect DBCollectName, query DBQuery) (ids []string) {

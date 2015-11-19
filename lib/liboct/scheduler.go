@@ -5,13 +5,6 @@ import (
 	"fmt"
 )
 
-type SchedulerUnit interface {
-	Apply() string
-	//	Deploy(id string, bundleURL string) bool
-	Run(id string, action TestAction) bool
-	GetStatus() TestStatus
-}
-
 type Scheduler struct {
 	ID      string
 	Case    TestCase
@@ -41,44 +34,42 @@ func (s *Scheduler) GetID() string {
 	return s.ID
 }
 
-func SchedulerNew(tc TestCase) (s Scheduler, ok bool) {
+func SchedulerNew(tc TestCase) (s Scheduler, err error) {
 	s.Case = tc
 	for index := 0; index < len(s.Case.Units); index++ {
 		s.Case.Units[index].SetStatus(TestStatusInit)
 	}
-	return s, true
+	return s, nil
 }
 
-func (s *Scheduler) Command(action TestAction) (succ bool) {
-	succ = true
+func (s *Scheduler) Command(action TestAction) (err error) {
 	for index := 0; index < len(s.Case.Units); index++ {
-		ok := true
 		switch action {
 		case TestActionApply:
-			ok = s.Case.Units[index].Apply()
-			if ok {
+			err = s.Case.Units[index].Apply()
+			if err == nil {
 				//TODO: each unit should have its own files
 				s.Case.Units[index].SetBundleURL(s.Case.BundleURL)
 			}
 		case TestActionDeploy:
-			ok = s.Case.Units[index].Deploy()
+			err = s.Case.Units[index].Deploy()
 		case TestActionRun:
-			ok = s.Case.Units[index].Run()
+			err = s.Case.Units[index].Run()
 		case TestActionCollect:
-			ok = s.Case.Units[index].Collect()
+			err = s.Case.Units[index].Collect()
 		case TestActionDestroy:
-			ok = s.Case.Units[index].Destroy()
+			err = s.Case.Units[index].Destroy()
 		}
-		if ok == false {
-			succ = false
-			break
+
+		if err != nil {
+			return err
 		}
 	}
-	fmt.Println("Scheduler after ", action, ": ", s, succ)
+	fmt.Println("Scheduler after ", action, ": ", s)
 	if len(s.ID) > 0 {
 		DBUpdate(DBScheduler, s.ID, s)
 	}
-	return succ
+	return nil
 }
 
 func (s *Scheduler) GetStatus() TestStatus {

@@ -45,7 +45,7 @@ func init() {
 			}
 		}
 		fmt.Println(repos[index])
-		if id, ok := liboct.DBAdd(liboct.DBRepo, repos[index]); ok {
+		if id, err := liboct.DBAdd(liboct.DBRepo, repos[index]); err == nil {
 			RefreshRepo(id)
 		}
 	}

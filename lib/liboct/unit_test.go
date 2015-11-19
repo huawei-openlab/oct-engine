@@ -66,14 +66,14 @@ func TestUnitApply(t *testing.T) {
 	DBAdd(DBResource, resB)
 
 	unit := DemoUnitA()
-	if unit.Apply() == true {
+	if unit.Apply() == nil {
 		t.Log("Unit Apply OK successful")
 	} else {
 		t.Error("Unit Apply OK failed")
 	}
 
 	unit.ResourceCommon.CPU = 200
-	if unit.Apply() == false {
+	if unit.Apply() != nil {
 		t.Log("Unit Apply failed successful")
 	} else {
 		t.Error("Unit Apply failed failed")
