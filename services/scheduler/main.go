@@ -3,6 +3,7 @@ package main
 import (
 	"../../lib/liboct"
 	"../../lib/routes"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -13,13 +14,62 @@ import (
 	"strings"
 )
 
-const SchedularCacheDir = "/tmp/.test_schedular_cache"
-
 type SchedulerConfig struct {
 	Port           int
 	ServerListFile string
-	CacheDir       string
 	Debug          bool
+}
+
+func GetTaskReport(w http.ResponseWriter, r *http.Request) {
+	var ret liboct.HttpRet
+	id := r.URL.Query().Get(":ID")
+	sInterface, err := liboct.DBGet(liboct.DBScheduler, id)
+	if err != nil {
+		ret.Status = liboct.RetStatusFailed
+		ret.Message = err.Error()
+		ret_string, _ := json.MarshalIndent(ret, "", "\t")
+		w.Write([]byte(ret_string))
+		return
+	}
+	s, _ := liboct.SchedulerFromString(sInterface.String())
+
+	//Send the collect command to the octd
+	if err := s.Command(liboct.TestActionCollect); err != nil {
+		ret.Status = liboct.RetStatusFailed
+		ret.Message = err.Error()
+		ret_string, _ := json.MarshalIndent(ret, "", "\t")
+		w.Write([]byte(ret_string))
+		liboct.DBUpdate(liboct.DBScheduler, id, s)
+		return
+	} else {
+		liboct.DBUpdate(liboct.DBScheduler, id, s)
+	}
+
+	//Tar the reports in the cacheDir
+	reportURL := path.Join(liboct.SchedulerCacheDir, s.ID, "reports.tar.gz")
+	fmt.Println("Get reportURL ", reportURL)
+	_, err = os.Stat(reportURL)
+	if err != nil {
+		var reports []string
+		for index := 0; index < len(s.Case.Units); index++ {
+			reports = append(reports, s.Case.Units[index].ReportURL)
+		}
+		reportURL = liboct.TarFileList(reports, path.Join(liboct.SchedulerCacheDir, s.ID), "reports")
+	}
+
+	file, err := os.Open(reportURL)
+	defer file.Close()
+	if err != nil {
+		ret.Status = liboct.RetStatusFailed
+		ret.Message = err.Error()
+		ret_string, _ := json.MarshalIndent(ret, "", "\t")
+		w.Write([]byte(ret_string))
+	} else {
+		buf := bytes.NewBufferString("")
+		buf.ReadFrom(file)
+
+		w.Write([]byte(buf.String()))
+	}
 }
 
 func ReceiveTaskCommand(w http.ResponseWriter, r *http.Request) {
@@ -80,7 +130,7 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("ReceiveTask begin")
 	var ret liboct.HttpRet
 	var tc liboct.TestCase
-	realURL, _ := liboct.ReceiveFile(w, r, SchedularCacheDir)
+	realURL, _ := liboct.ReceiveFile(w, r, liboct.SchedulerCacheDir)
 	tc, err := liboct.CaseFromTar(realURL, "")
 	if err != nil {
 		ret.Status = liboct.RetStatusFailed
@@ -160,6 +210,7 @@ func main() {
 
 	mux.Post("/task", ReceiveTask)
 	mux.Post("/task/:ID", ReceiveTaskCommand)
+	mux.Get("/task/:ID/report", GetTaskReport)
 
 	http.Handle("/", mux)
 	port := fmt.Sprintf(":%d", pubConfig.Port)

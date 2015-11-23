@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 )
 
+const SchedulerCacheDir = "/tmp/.test_schedular_cache"
+
 type Scheduler struct {
 	ID      string
 	Case    TestCase

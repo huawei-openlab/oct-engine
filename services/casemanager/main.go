@@ -82,6 +82,7 @@ func main() {
 	//Add task : turn a case into a task, but donnot send to scheduler
 	mux.Post("/task", AddTask)
 	mux.Get("/task/:TaskID", GetTaskStatus)
+	mux.Get("/task/:TaskID/report", GetTaskReport)
 	// apply/deploy/run/collect/destroy
 	mux.Post("/task/:TaskID", PostTaskAction)
 

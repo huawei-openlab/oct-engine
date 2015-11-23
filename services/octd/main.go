@@ -25,7 +25,7 @@ const OCTDCacheDir = "/tmp/.octd_cache"
 
 var pubConfig OCTDConfig
 
-func GetResult(w http.ResponseWriter, r *http.Request) {
+func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 	//TODO
 	var realURL string
 	filename := r.URL.Query().Get("File")
@@ -88,6 +88,7 @@ func RunCommand(cmd string, dir string) bool {
 	return true
 }
 
+//TODO: the working dir should be defined in the spec.
 func GetWorkingDir(id string) string {
 	return path.Join("/tmp/.octd_cache", id)
 }
@@ -149,14 +150,13 @@ func init() {
 }
 
 func main() {
-
 	var port string
 	port = fmt.Sprintf(":%d", pubConfig.Port)
 
 	mux := routes.New()
 	mux.Post("/task", ReceiveTask)
 	mux.Post("/task/:ID", PostTaskAction)
-	mux.Get("/task/:ID/result", GetResult)
+	mux.Get("/task/:ID/report", GetTaskReport)
 
 	http.Handle("/", mux)
 	fmt.Println("Start to listen ", port)

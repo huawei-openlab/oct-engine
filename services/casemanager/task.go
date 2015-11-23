@@ -9,8 +9,6 @@ import (
 	"strconv"
 )
 
-const CMTKey = "case manager task"
-
 func AddTask(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
 	result, _ := ioutil.ReadAll(r.Body)
@@ -53,6 +51,44 @@ func GetTaskStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	retInfo, _ := json.MarshalIndent(ret, "", "\t")
 	w.Write([]byte(retInfo))
+}
+
+// redirect to local to test
+func GetTaskReport(w http.ResponseWriter, r *http.Request) {
+	var ret liboct.HttpRet
+	id := r.URL.Query().Get(":TaskID")
+	taskInterface, err := liboct.DBGet(liboct.DBTask, id)
+	if err != nil {
+		ret.Status = liboct.RetStatusFailed
+		ret.Message = "Cannot find the task, wrong ID provided"
+		retInfo, _ := json.MarshalIndent(ret, "", "\t")
+		w.Write([]byte(retInfo))
+		return
+	}
+
+	task, _ := liboct.TaskFromString(taskInterface.String())
+	// Here the task.PostURL is: http://ip:port/task/id
+	getURL := fmt.Sprintf("%s/report", task.PostURL)
+	fmt.Println("Get url ", getURL)
+	resp, err := http.Get(getURL)
+	if err != nil {
+		ret.Status = liboct.RetStatusFailed
+		ret.Message = "Cannot find get the report by the url"
+		retInfo, _ := json.MarshalIndent(ret, "", "\t")
+		w.Write([]byte(retInfo))
+		return
+	}
+	defer resp.Body.Close()
+	resp_body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		ret.Status = liboct.RetStatusFailed
+		ret.Message = "Cannot find read the report by the url"
+		retInfo, _ := json.MarshalIndent(ret, "", "\t")
+		w.Write([]byte(retInfo))
+		return
+	}
+
+	w.Write([]byte(resp_body))
 }
 
 func PostTaskAction(w http.ResponseWriter, r *http.Request) {

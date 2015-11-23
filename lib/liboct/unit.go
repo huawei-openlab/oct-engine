@@ -6,7 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
+	"path"
 )
 
 type TestStatus string
@@ -69,6 +72,7 @@ type TestUnit struct {
 	Commands TestCommand
 	//FIXME: I don't want to use Children..
 	//	Children []TestUnit
+	ReportURL string
 
 	Status TestStatus
 
@@ -83,9 +87,8 @@ type TestUnit struct {
 }
 
 type TestCommand struct {
-	Deploy  string
-	Run     string
-	Collect string
+	Deploy string
+	Run    string
 }
 
 //Used for tranfer between scheduler and octd/containerpool
@@ -253,17 +256,33 @@ func (t *TestUnit) Run() error {
 }
 
 func (t *TestUnit) Collect() error {
-	if t.Status != TestStatusRun && t.Status != TestStatusCollectFailed {
+	if t.Status != TestStatusRun && t.Status != TestStatusCollectFailed && t.Status != TestStatusCollected {
 		return errors.New(fmt.Sprintf("Cannot collect the report when the current status is :%s.", t.Status))
 	}
-	t.Status = TestStatusCollecting
-	err := t.command(TestActionCollect)
-	if err == nil {
-		t.Status = TestStatusCollected
-	} else {
-		t.Status = TestStatusCollectFailed
+	resInterface, err := DBGet(DBResource, t.ResourceID)
+	if err != nil {
+		return err
 	}
-	return err
+	res, _ := ResourceFromString(resInterface.String())
+	t.Status = TestStatusCollecting
+	reportURL := fmt.Sprintf("%s/task/%s/report?File=", res.URL, t.SchedulerID, t.ReportURL)
+
+	resp, err := http.Get(reportURL)
+	if err != nil {
+		t.Status = TestStatusCollectFailed
+		return err
+	}
+	defer resp.Body.Close()
+	resp_body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Status = TestStatusCollectFailed
+		return err
+	}
+	filename := path.Join(SchedulerCacheDir, t.SchedulerID, t.ReportURL)
+	ioutil.WriteFile(filename, resp_body, os.ModePerm)
+
+	t.Status = TestStatusCollected
+	return nil
 }
 
 func (t *TestUnit) Destroy() error {
@@ -292,9 +311,6 @@ func (t *TestUnit) command(action TestAction) error {
 		cmd.Command = t.Commands.Deploy
 	case TestActionRun:
 		cmd.Command = t.Commands.Run
-	case TestActionCollect:
-		//TODO: the user should just define the log url, and the oct compose a new command
-		cmd.Command = t.Commands.Collect
 	default:
 		return errors.New(fmt.Sprintf("The action '%s' is not support.", action))
 	}
