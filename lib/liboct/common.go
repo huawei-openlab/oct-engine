@@ -222,11 +222,7 @@ func TarFileList(filelist []string, case_dir string, object_name string) (tarURL
 			fmt.Println(err)
 			continue
 		}
-		h := new(tar.Header)
-		h.Name = source_file
-		h.Size = fi.Size()
-		h.Mode = int64(fi.Mode())
-		h.ModTime = fi.ModTime()
+		h, _ := tar.FileInfoHeader(fi, "")
 		err = tw.WriteHeader(h)
 		_, err = io.Copy(tw, fr)
 	}
@@ -286,15 +282,24 @@ func UntarFile(filename string, cacheURL string) {
 		if err != nil {
 			panic(err)
 		}
-		targetURL := PreparePath(cacheURL, h.Name)
-		fw, err := os.OpenFile(fmt.Sprintf("%s/%s", targetURL, h.Name), os.O_CREATE|os.O_WRONLY, os.FileMode(h.Mode))
-		if err != nil {
-			//Dir for example
-			continue
-		} else {
-			io.Copy(fw, tr)
-			fw.Close()
+		filename := path.Join(cacheURL, h.Name)
+		switch h.Typeflag {
+		case tar.TypeDir:
+			os.MkdirAll(filename, os.FileMode(h.Mode))
+		case tar.TypeReg:
+			fw, err := os.Create(filename)
+			if err != nil {
+				continue
+			} else {
+				io.Copy(fw, tr)
+				fw.Close()
+			}
+		case tar.TypeLink:
+			os.Link(h.Linkname, filename)
+		case tar.TypeSymlink:
+			os.Symlink(h.Linkname, filename)
 		}
+		//TODO: set the time/own and the etc..
 	}
 }
 
