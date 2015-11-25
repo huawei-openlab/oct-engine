@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+
+	"github.com/Sirupsen/logrus"
 )
 
 func AddTask(w http.ResponseWriter, r *http.Request) {
@@ -18,6 +20,7 @@ func AddTask(w http.ResponseWriter, r *http.Request) {
 	caseID := string(result)
 	caseInterface, err := db.Get(liboct.DBCase, caseID)
 	if err != nil {
+		logrus.Warn(err)
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = err.Error()
 		retInfo, _ := json.MarshalIndent(ret, "", "\t")
@@ -29,6 +32,7 @@ func AddTask(w http.ResponseWriter, r *http.Request) {
 	bundleURL := tc.GetBundleTarURL()
 	postURL := pubConfig.SchedulerURL
 	if task, err := liboct.TestTaskNew(postURL, bundleURL, liboct.SchedulerDefaultPrio); err == nil {
+		logrus.Warn(err)
 		id, _ := db.Add(liboct.DBTask, task)
 		ret.Status = liboct.RetStatusOK
 		ret.Message = id
@@ -45,6 +49,7 @@ func GetTaskStatus(w http.ResponseWriter, r *http.Request) {
 	db := liboct.GetDefaultDB()
 	id := r.URL.Query().Get(":TaskID")
 	if taskInterface, err := db.Get(liboct.DBTask, id); err == nil {
+		logrus.Warn(err)
 		ret.Status = liboct.RetStatusOK
 		ret.Data = taskInterface
 	} else {
@@ -62,6 +67,7 @@ func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get(":TaskID")
 	taskInterface, err := db.Get(liboct.DBTask, id)
 	if err != nil {
+		logrus.Warn(err)
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = "Cannot find the task, wrong ID provided"
 		retInfo, _ := json.MarshalIndent(ret, "", "\t")
@@ -72,9 +78,10 @@ func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 	task, _ := liboct.TaskFromString(taskInterface.String())
 	// Here the task.PostURL is: http://ip:port/task/id
 	getURL := fmt.Sprintf("%s/report", task.PostURL)
-	fmt.Println("Get url ", getURL)
+	logrus.Infof("Get url ", getURL)
 	resp, err := http.Get(getURL)
 	if err != nil {
+		logrus.Warn(err)
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = "Cannot find get the report by the url"
 		retInfo, _ := json.MarshalIndent(ret, "", "\t")
@@ -84,6 +91,7 @@ func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 	resp_body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		logrus.Warn(err)
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = "Cannot find read the report by the url"
 		retInfo, _ := json.MarshalIndent(ret, "", "\t")
@@ -101,6 +109,7 @@ func PostTaskAction(w http.ResponseWriter, r *http.Request) {
 	r.Body.Close()
 	action, err := liboct.TestActionFromString(string(result))
 	if err != nil {
+		logrus.Warn(err)
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = err.Error()
 		retInfo, _ := json.MarshalIndent(ret, "", "\t")
@@ -110,6 +119,7 @@ func PostTaskAction(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get(":TaskID")
 	taskInterface, err := db.Get(liboct.DBTask, id)
 	if err != nil {
+		logrus.Warn(err)
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = err.Error()
 		retInfo, _ := json.MarshalIndent(ret, "", "\t")

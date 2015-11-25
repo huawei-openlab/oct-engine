@@ -5,13 +5,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/drone/routes"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path"
 	"strings"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/drone/routes"
 )
 
 type SchedulerConfig struct {
@@ -26,6 +27,7 @@ func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get(":ID")
 	sInterface, err := db.Get(liboct.DBScheduler, id)
 	if err != nil {
+		logrus.Warn(err)
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = err.Error()
 		ret_string, _ := json.MarshalIndent(ret, "", "\t")
@@ -36,6 +38,7 @@ func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 
 	//Send the collect command to the octd
 	if err := s.Command(liboct.TestActionCollect); err != nil {
+		logrus.Warn(err)
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = err.Error()
 		ret_string, _ := json.MarshalIndent(ret, "", "\t")
@@ -48,9 +51,10 @@ func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 
 	//Tar the reports in the cacheDir
 	reportURL := path.Join(liboct.SchedulerCacheDir, s.ID, "reports.tar.gz")
-	fmt.Println("Get reportURL ", reportURL)
+	logrus.Infof("Get reportURL ", reportURL)
 	_, err = os.Stat(reportURL)
 	if err != nil {
+		logrus.Warn(err)
 		var reports []string
 		for index := 0; index < len(s.Case.Units); index++ {
 			reports = append(reports, s.Case.Units[index].ReportURL)
@@ -61,6 +65,7 @@ func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 	file, err := os.Open(reportURL)
 	defer file.Close()
 	if err != nil {
+		logrus.Warn(err)
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = err.Error()
 		ret_string, _ := json.MarshalIndent(ret, "", "\t")
@@ -79,6 +84,7 @@ func ReceiveTaskCommand(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get(":ID")
 	sInterface, err := db.Get(liboct.DBScheduler, id)
 	if err != nil {
+		logrus.Warn(err)
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = err.Error()
 		ret_string, _ := json.MarshalIndent(ret, "", "\t")
@@ -88,7 +94,7 @@ func ReceiveTaskCommand(w http.ResponseWriter, r *http.Request) {
 	s, _ := liboct.SchedulerFromString(sInterface.String())
 
 	result, _ := ioutil.ReadAll(r.Body)
-	fmt.Println("Receive task Command ", string(result))
+	logrus.Infof("Receive task Command ", string(result))
 	r.Body.Close()
 	/* Donnot use this now FIXME
 	var cmd liboct.TestActionCommand
@@ -96,6 +102,7 @@ func ReceiveTaskCommand(w http.ResponseWriter, r *http.Request) {
 	*/
 	action, err := liboct.TestActionFromString(string(result))
 	if err != nil {
+		logrus.Warn(err)
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = err.Error()
 	} else {
@@ -130,7 +137,7 @@ func updateSchedulerBundle(id string, oldURL string) {
 }
 
 func ReceiveTask(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("ReceiveTask begin")
+	logrus.Infof("ReceiveTask begin")
 	var ret liboct.HttpRet
 	var tc liboct.TestCase
 	db := liboct.GetDefaultDB()
@@ -169,16 +176,21 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 func init() {
 	sf, err := os.Open("scheduler.conf")
 	if err != nil {
-		fmt.Errorf("Cannot find scheduler.conf.")
+		logrus.Fatal(err)
 		return
 	}
 	defer sf.Close()
 
 	if err = json.NewDecoder(sf).Decode(&pubConfig); err != nil {
-		fmt.Errorf("Error in parse scheduler.conf")
+		logrus.Fatal(err)
 		return
 	}
 
+	if pubConfig.Debug {
+		logrus.SetLevel(logrus.DebugLevel)
+	} else {
+		logrus.SetLevel(logrus.WarnLevel)
+	}
 	db := liboct.GetDefaultDB()
 	db.RegistCollect(liboct.DBResource)
 	db.RegistCollect(liboct.DBScheduler)
@@ -198,8 +210,8 @@ func init() {
 	}
 
 	for index := 0; index < len(rl); index++ {
-		if _, e := db.Add(liboct.DBResource, rl[index]); e == nil {
-			fmt.Println(rl[index])
+		if _, e := db.Add(liboct.DBResource, rl[index]); e != nil {
+			logrus.Warn(e)
 		}
 	}
 }
@@ -217,10 +229,11 @@ func main() {
 	mux.Post("/task/:ID", ReceiveTaskCommand)
 	mux.Get("/task/:ID/report", GetTaskReport)
 
+	logrus.Infof("Start to listen :%d", pubConfig.Port)
 	http.Handle("/", mux)
 	port := fmt.Sprintf(":%d", pubConfig.Port)
 	err := http.ListenAndServe(port, nil)
 	if err != nil {
-		log.Fatal("ListenAndServe: ", err)
+		logrus.Fatal(err)
 	}
 }

@@ -14,6 +14,8 @@ import (
 	"os"
 	"os/exec"
 	"path"
+
+	"github.com/Sirupsen/logrus"
 )
 
 type RetStatus string
@@ -52,7 +54,7 @@ func PreparePath(cachename string, filename string) (dir string) {
 }
 
 func SendFile(postURL string, fileURL string, params map[string]string) (ret HttpRet) {
-	fmt.Println("Sendfile ", postURL, fileURL)
+	logrus.Infof("SendFile ", postURL, fileURL)
 	bodyBuf := &bytes.Buffer{}
 	bodyWriter := multipart.NewWriter(bodyBuf)
 	filename := path.Base(fileURL)
@@ -84,7 +86,7 @@ func SendFile(postURL string, fileURL string, params map[string]string) (ret Htt
 	}
 
 	for key, val := range params {
-		fmt.Println("key  ", key, "  val  ", val)
+		logrus.Infof("SendFile key", key, "  val ", val)
 		_ = bodyWriter.WriteField(key, val)
 	}
 	//	contentType := bodyWriter.FormDataContentType()
@@ -120,7 +122,7 @@ func SendCommand(apiurl string, b []byte) (ret HttpRet) {
 	body := bytes.NewBuffer(b)
 	resp, perr := http.Post(apiurl, "application/json;charset=utf-8", body)
 	if perr != nil {
-		fmt.Println(perr)
+		logrus.Warn(perr)
 		ret.Status = RetStatusFailed
 		ret.Message = perr.Error()
 	} else {
@@ -140,13 +142,13 @@ func SendCommand(apiurl string, b []byte) (ret HttpRet) {
 func ReadFile(fileURL string) (content string) {
 	_, err := os.Stat(fileURL)
 	if err != nil {
-		fmt.Println("cannot find the file ", fileURL)
+		logrus.Warn(err)
 		return content
 	}
 	file, err := os.Open(fileURL)
 	defer file.Close()
 	if err != nil {
-		fmt.Println("cannot open the file ", fileURL)
+		logrus.Warn(err)
 		return content
 	}
 	buf := bytes.NewBufferString("")
@@ -160,7 +162,7 @@ func ReceiveFile(w http.ResponseWriter, r *http.Request, cacheURL string) (realU
 	r.ParseMultipartForm(32 << 20)
 	file, handler, err := r.FormFile("tcfile")
 
-	fmt.Println("receive file ", cacheURL, " --  ", handler.Filename)
+	logrus.Infof("Receive file ", cacheURL, " ", handler.Filename)
 	params = make(map[string]string)
 
 	if r.MultipartForm != nil {
@@ -171,7 +173,7 @@ func ReceiveFile(w http.ResponseWriter, r *http.Request, cacheURL string) (realU
 	}
 
 	if err != nil {
-		fmt.Println("Cannot find the tc file")
+		logrus.Warn(err)
 		return realURL, params
 	}
 
@@ -186,7 +188,7 @@ func ReceiveFile(w http.ResponseWriter, r *http.Request, cacheURL string) (realU
 	realURL = fmt.Sprintf("%s/%s", realDir, handler.Filename)
 	f, err := os.Create(realURL)
 	if err != nil {
-		fmt.Println("Cannot create the file ", realURL)
+		logrus.Warn(err)
 		//TODO: better system error
 		http.Error(w, err.Error(), 500)
 		return realURL, params
@@ -202,7 +204,7 @@ func TarFileList(filelist []string, case_dir string, object_name string) (tarURL
 	tarURL = path.Join(case_dir, object_name) + ".tar.gz"
 	fw, err := os.Create(tarURL)
 	if err != nil {
-		fmt.Println("Failed in create tar file ", err)
+		logrus.Warn(err)
 		return tarURL
 	}
 	defer fw.Close()
@@ -215,12 +217,12 @@ func TarFileList(filelist []string, case_dir string, object_name string) (tarURL
 		source_file := filelist[index]
 		fi, err := os.Stat(path.Join(case_dir, source_file))
 		if err != nil {
-			fmt.Println(err)
+			logrus.Warn(err)
 			continue
 		}
 		fr, err := os.Open(path.Join(case_dir, source_file))
 		if err != nil {
-			fmt.Println(err)
+			logrus.Warn(err)
 			continue
 		}
 		h, _ := tar.FileInfoHeader(fi, "")
@@ -254,22 +256,22 @@ func TarDir(case_dir string) (tarURL string) {
 }
 
 func UntarFile(filename string, cacheURL string) {
-	fmt.Println("UntarFile ", filename, cacheURL)
+	logrus.Infof("UntarFile ", filename, cacheURL)
 	_, err := os.Stat(filename)
 	if err != nil {
-		fmt.Println("cannot find the file ", filename)
+		logrus.Warn(err)
 		return
 	}
 
 	fr, err := os.Open(filename)
 	if err != nil {
-		fmt.Println("fail in open file ", filename)
+		logrus.Warn(err)
 		return
 	}
 	defer fr.Close()
 	gr, err := gzip.NewReader(fr)
 	if err != nil {
-		fmt.Println("fail in using gzip")
+		logrus.Warn(err)
 		return
 	}
 	defer gr.Close()
@@ -281,6 +283,7 @@ func UntarFile(filename string, cacheURL string) {
 			break
 		}
 		if err != nil {
+			logrus.Fatal(err)
 			panic(err)
 		}
 		filename := path.Join(cacheURL, h.Name)
@@ -307,19 +310,19 @@ func UntarFile(filename string, cacheURL string) {
 func ReadCaseFromTar(tarURL string) (content string) {
 	_, err := os.Stat(tarURL)
 	if err != nil {
-		fmt.Println("cannot find the file ", tarURL)
+		logrus.Warn(err)
 		return content
 	}
 
 	fr, err := os.Open(tarURL)
 	if err != nil {
-		fmt.Println("fail in open file ", tarURL)
+		logrus.Warn(err)
 		return content
 	}
 	defer fr.Close()
 	gr, err := gzip.NewReader(fr)
 	if err != nil {
-		fmt.Println("fail in using gzip")
+		logrus.Warn(err)
 		return content
 	}
 	defer gr.Close()
@@ -355,19 +358,19 @@ func ReadCaseFromTar(tarURL string) (content string) {
 func ReadTar(tarURL string, fileURL string, suffix string) (content string) {
 	_, err := os.Stat(tarURL)
 	if err != nil {
-		fmt.Println("cannot find the file ", tarURL)
+		logrus.Warn(err)
 		return content
 	}
 
 	fr, err := os.Open(tarURL)
 	if err != nil {
-		fmt.Println("fail in open file ", tarURL)
+		logrus.Warn(err)
 		return content
 	}
 	defer fr.Close()
 	gr, err := gzip.NewReader(fr)
 	if err != nil {
-		fmt.Println("fail in using gzip")
+		logrus.Warn(err)
 		return content
 	}
 	defer gr.Close()
@@ -378,6 +381,7 @@ func ReadTar(tarURL string, fileURL string, suffix string) (content string) {
 			break
 		}
 		if err != nil {
+			logrus.Fatal(err)
 			panic(err)
 		}
 		if len(suffix) > 0 {

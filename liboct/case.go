@@ -1,5 +1,4 @@
-//NOTE: this file is used for the 'Schedular'
-//TODO: all 'sync' mode now
+//This file is used for the 'Schedular'
 package liboct
 
 import (
@@ -231,7 +230,6 @@ func (tc *TestCase) generateBundleTar() string {
 
 //If bundleURL is nil, untar the bundle in the same dir
 func CaseFromTar(tarURL string, bundleURL string) (TestCase, error) {
-	fmt.Println("Case from tar ", tarURL, bundleURL)
 	bundleDir := ""
 	if len(bundleURL) == 0 {
 		bundleDir = strings.TrimSuffix(tarURL, ".tar.gz")

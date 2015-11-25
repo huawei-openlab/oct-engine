@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"os"
 	"path"
+
+	"github.com/Sirupsen/logrus"
 )
 
 type TestStatus string
@@ -47,7 +49,7 @@ const (
 )
 
 func TestActionFromString(val string) (TestAction, error) {
-	fmt.Println("test action get ", val)
+	logrus.Infof("test action get ", val)
 	switch val {
 	case "apply":
 		return TestActionApply, nil
@@ -222,7 +224,7 @@ func (t *TestUnit) Deploy() error {
 	deployURL := fmt.Sprintf("%s/task", res.URL)
 	params := make(map[string]string)
 	params["id"] = t.SchedulerID
-	fmt.Println("Test Unit deploy ", deployURL, t.BundleURL, t.SchedulerID)
+	logrus.Infof("Test Unit deploy ", deployURL, t.BundleURL, t.SchedulerID)
 
 	tarURL := fmt.Sprintf("%s.tar.gz", t.BundleURL)
 	_, err = os.Stat(tarURL)
@@ -231,7 +233,7 @@ func (t *TestUnit) Deploy() error {
 		tarURL = TarFileList(files, t.BundleURL, "")
 	}
 	ret := SendFile(deployURL, tarURL, params)
-	fmt.Println("Deploy result ", ret)
+	logrus.Infof("Deploy result ", ret)
 	if ret.Status == RetStatusOK {
 		if err := t.command(TestActionDeploy); err == nil {
 			t.Status = TestStatusDeployed
@@ -243,7 +245,7 @@ func (t *TestUnit) Deploy() error {
 }
 
 func (t *TestUnit) Run() error {
-	fmt.Println("TestUnit Run ", t)
+	logrus.Infof("TestUnit Run ", t)
 	if t.Status != TestStatusDeployed && t.Status != TestStatusRunFailed {
 		return errors.New(fmt.Sprintf("Cannot run the test when the current status is :%s.", t.Status))
 	}
@@ -301,7 +303,7 @@ func (t *TestUnit) Destroy() error {
 }
 
 func (t *TestUnit) command(action TestAction) error {
-	fmt.Println("Test Unit command ", action)
+	logrus.Infof("Test Unit command ", action)
 	db := GetDefaultDB()
 	resInterface, err := db.Get(DBResource, t.ResourceID)
 	if err != nil {
@@ -323,7 +325,7 @@ func (t *TestUnit) command(action TestAction) error {
 	deployURL := fmt.Sprintf("%s/task/%s", res.URL, t.SchedulerID)
 
 	ret := SendCommand(deployURL, []byte(cmd.String()))
-	fmt.Println("Send Command ", deployURL, cmd.String())
+	logrus.Infof("Send Command ", deployURL, cmd.String())
 	if ret.Status == RetStatusOK {
 		return nil
 	}

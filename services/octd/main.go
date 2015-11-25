@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/drone/routes"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -13,6 +12,9 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/drone/routes"
 )
 
 type OCTDConfig struct {
@@ -61,7 +63,7 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
 	realURL, params := liboct.ReceiveFile(w, r, OCTDCacheDir)
 
-	fmt.Println(params)
+	logrus.Infof("ReceiveTask", realURL)
 
 	//TODO: add id to a database?
 	if _, ok := params["id"]; ok {
@@ -83,7 +85,7 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 func RunCommand(action liboct.TestActionCommand, id string) bool {
 	dir := GetWorkingDir(id)
 	if pubConfig.Debug {
-		fmt.Println("Run the command < ", action.Command, ">  in ", dir)
+		logrus.Infof("Run the command < ", action.Command, ">  in ", dir)
 	}
 	//check it since some case only has a config.json
 	liboct.PreparePath(dir, "")
@@ -133,7 +135,7 @@ func GetWorkingDir(id string) string {
 func PostTaskAction(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
 	result, _ := ioutil.ReadAll(r.Body)
-	fmt.Println("Post task action ", string(result))
+	logrus.Infof("Post task action ", string(result))
 	r.Body.Close()
 	action, err := liboct.ActionCommandFromString(string(result))
 	if err != nil {
@@ -158,26 +160,24 @@ func PostTaskAction(w http.ResponseWriter, r *http.Request) {
 func RegisterToTestServer() {
 	post_url := pubConfig.TSurl + "/resource"
 
-	//TODO
 	//Seems there will be lots of coding while getting the system info
 	//Using config now.
 
 	content := liboct.ReadFile("./host.conf")
-	fmt.Println(content)
-	ret := liboct.SendCommand(post_url, []byte(content))
-	fmt.Println(ret)
+	logrus.Infof(content)
+	liboct.SendCommand(post_url, []byte(content))
 }
 
 func init() {
 	of, err := os.Open("octd.conf")
 	if err != nil {
-		fmt.Errorf("Cannot find octd.conf.")
+		logrus.Fatal(err)
 		return
 	}
 	defer of.Close()
 
 	if err = json.NewDecoder(of).Decode(&pubConfig); err != nil {
-		fmt.Errorf("Error in parse octd.conf")
+		logrus.Fatal(err)
 		return
 	}
 
@@ -185,7 +185,7 @@ func init() {
 		cmd := exec.Command("/bin/sh", "-c", pubConfig.ContainerDaemon)
 		cmd.Stdin = os.Stdin
 		if _, err := cmd.CombinedOutput(); err != nil {
-			fmt.Errorf("Error in running container daemon %s.", pubConfig.ContainerDaemon)
+			logrus.Fatal(err)
 			return
 		}
 	}
@@ -202,7 +202,7 @@ func main() {
 	mux.Get("/task/:ID/report", GetTaskReport)
 
 	http.Handle("/", mux)
-	fmt.Println("Start to listen ", port)
+	logrus.Infof("Start to listen ", port)
 	err := http.ListenAndServe(port, nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)

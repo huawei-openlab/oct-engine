@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+
+	"github.com/Sirupsen/logrus"
 )
 
 const SchedulerPriority = "Priority"
@@ -73,15 +75,14 @@ func (task *TestTask) Apply() error {
 
 	postURL := fmt.Sprintf("%s/task", task.PostURL)
 
-	//DEBUG
-	fmt.Println("apply task: ", postURL, task.BundleURL)
+	logrus.Infof("apply task: ", postURL, task.BundleURL)
 
 	ret := SendFile(postURL, task.BundleURL, params)
 	if ret.Status == RetStatusOK {
 		task.SetSchedulerID(ret.Message)
 		task.PostURL = fmt.Sprintf("%s/task/%s", task.PostURL, task.GetSchedulerID())
 		task.Status = TestStatusAllocated
-		fmt.Println("apply return : ", task, ret.Message)
+		logrus.Infof("apply return : ", task, ret.Message)
 		return nil
 	} else {
 		task.Status = TestStatusAllocateFailed
@@ -96,7 +97,7 @@ func (task *TestTask) Deploy() error {
 	}
 	task.Status = TestStatusDeploying
 	ret := SendCommand(task.PostURL, []byte(TestActionDeploy))
-	fmt.Println("Deploy : ", task.PostURL, ret)
+	logrus.Infof("Deploy : ", task.PostURL, ret)
 	if ret.Status == RetStatusOK {
 		task.Status = TestStatusDeployed
 		return nil
@@ -112,7 +113,7 @@ func (task *TestTask) Run() error {
 	}
 	task.Status = TestStatusRunning
 	ret := SendCommand(task.PostURL, []byte(TestActionRun))
-	fmt.Println("Run ", ret)
+	logrus.Infof("Run ", ret)
 	if ret.Status == RetStatusOK {
 		task.Status = TestStatusRun
 		return nil
@@ -128,7 +129,7 @@ func (task *TestTask) Collect() error {
 	}
 	task.Status = TestStatusCollecting
 	ret := SendCommand(task.PostURL, []byte(TestActionCollect))
-	fmt.Println("Collect ", ret)
+	logrus.Infof("Collect ", ret)
 	if ret.Status == RetStatusOK {
 		task.Status = TestStatusCollected
 		return nil
@@ -165,7 +166,7 @@ func (task *TestTask) Command(action TestAction) (err error) {
 	default:
 		return errors.New(fmt.Sprintf("The action %s is not supported.", action))
 	}
-	fmt.Println("Command ", action, "  Update  ", task)
+	logrus.Infof("Command ", action, "  Update  ", task)
 	db := GetDefaultDB()
 	db.Update(DBTask, task.ID, task)
 	return nil

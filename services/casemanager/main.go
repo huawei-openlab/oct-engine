@@ -4,10 +4,12 @@ import (
 	"../../liboct"
 	"encoding/json"
 	"fmt"
-	"github.com/drone/routes"
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/drone/routes"
 )
 
 type CaseManagerConf struct {
@@ -22,15 +24,22 @@ var pubConfig CaseManagerConf
 func init() {
 	cmf, err := os.Open("casemanager.conf")
 	if err != nil {
-		fmt.Errorf("Cannot find casemanager.conf.")
+		logrus.Fatal(err)
 		return
 	}
 	defer cmf.Close()
 
 	if err = json.NewDecoder(cmf).Decode(&pubConfig); err != nil {
-		fmt.Errorf("Error in parse casemanager.conf")
+		logrus.Fatal(err)
 		return
 	}
+
+	if pubConfig.Debug {
+		logrus.SetLevel(logrus.DebugLevel)
+	} else {
+		logrus.SetLevel(logrus.WarnLevel)
+	}
+
 	db := liboct.GetDefaultDB()
 	db.RegistCollect(liboct.DBCase)
 	db.RegistCollect(liboct.DBRepo)
@@ -39,12 +48,9 @@ func init() {
 	repos := pubConfig.Repos
 	for index := 0; index < len(repos); index++ {
 		if err := repos[index].IsValid(); err != nil {
-			if pubConfig.Debug == true {
-				fmt.Println("The repo ", repos[index], " is invalid. ", err)
-				continue
-			}
+			logrus.Warnf("The repo ", repos[index], " is invalid. ", err.Error())
+			continue
 		}
-		fmt.Println(repos[index])
 		if id, err := db.Add(liboct.DBRepo, repos[index]); err == nil {
 			RefreshRepo(id)
 		}
@@ -87,7 +93,7 @@ func main() {
 	mux.Post("/task/:TaskID", PostTaskAction)
 
 	http.Handle("/", mux)
-	fmt.Println("Listen to port ", port)
+	logrus.Infof("Listen to port ", port)
 	err := http.ListenAndServe(port, nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)

@@ -1,11 +1,11 @@
-//NOTE: this file is used for the 'Schedular'
-//TODO: all 'sync' mode now
+//This file is used for the 'Schedular'
 package liboct
 
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
+
+	"github.com/Sirupsen/logrus"
 )
 
 type ResourceStatus string
@@ -82,25 +82,25 @@ func (res *Resource) GetID() string {
 
 func (res *Resource) IsQualify(req ResourceCommon) bool {
 	if req.Distribution != res.Distribution {
-		fmt.Println("Distribution not fit")
+		logrus.Infof("Distribution not fit")
 		return false
 	}
 	if req.Version != res.Version {
-		fmt.Println("Version not fit")
+		logrus.Infof("Version not fit")
 		return false
 	}
 	if req.Arch != res.Arch {
-		fmt.Println("Arch not fit")
+		logrus.Infof("Arch not fit")
 		return false
 	}
 
 	//TODO: better calculation
 	if req.CPU > res.CPU {
-		fmt.Println("CPU not fit")
+		logrus.Infof("CPU not fit")
 		return false
 	}
 	if req.Memory > res.Memory {
-		fmt.Println("Memory not fit")
+		logrus.Infof("Memory not fit")
 		return false
 	}
 	return true

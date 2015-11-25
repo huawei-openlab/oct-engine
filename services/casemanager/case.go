@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+
+	"github.com/Sirupsen/logrus"
 )
 
 func ListRepos(w http.ResponseWriter, r *http.Request) {
@@ -65,6 +67,7 @@ func AddRepo(w http.ResponseWriter, r *http.Request) {
 		r.Body.Close()
 		err := json.Unmarshal([]byte(result), &repo)
 		if err != nil {
+			logrus.Info(err)
 			ret.Status = liboct.RetStatusFailed
 			ret.Message = fmt.Sprintf("The repo is invalid.")
 		} else {
@@ -77,6 +80,7 @@ func AddRepo(w http.ResponseWriter, r *http.Request) {
 					ret.Message = e.Error()
 				}
 			} else {
+				logrus.Info(err)
 				ret.Status = liboct.RetStatusFailed
 				ret.Message = err.Error()
 			}
@@ -103,6 +107,7 @@ func ModifyRepo(w http.ResponseWriter, r *http.Request) {
 	db := liboct.GetDefaultDB()
 	val, err := db.Get(liboct.DBRepo, repoID)
 	if err != nil {
+		logrus.Warn(err)
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = fmt.Sprintf("The repo %s is not exist.", repoID)
 		retInfo, _ := json.MarshalIndent(ret, "", "\t")
@@ -116,6 +121,7 @@ func ModifyRepo(w http.ResponseWriter, r *http.Request) {
 		r.Body.Close()
 		err := json.Unmarshal([]byte(result), &newRepo)
 		if err != nil {
+			logrus.Warn(err)
 			ret.Status = liboct.RetStatusFailed
 			ret.Message = fmt.Sprintf("The modified information is invalid.")
 		} else {
