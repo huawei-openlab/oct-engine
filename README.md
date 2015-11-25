@@ -6,14 +6,11 @@ The oct-engine provides the framework for the open container testing.
 
 ## The framework architecture
 ![Framework](docs/static/test_framework.png "Framework")
-  * `Open Container Pool` :  
-    The Open Container Pool provides RESTful API for user who wants to query/build/get a container image. 
-    The Open Container Pool acts as an agent to deliver requests to different container hubs.
-    
-  * `Open Test Server` :  
-    The Open Test Server provides RESTful API for user who wants to use a certain operating system on a certain architecture. 
-    The Open Test Server acts as an agent to deliver requests to different cluster or IASS platform.
-    
+  * `OCTD` :  
+    OCTD acts as a container pool or test sever, up to the configuration file.
+    When configurated as 'container pool', it uses 'Harbour' to run the testing inside containers.
+    When configurated as a 'test server', it simplely run the testing.
+
   * `Testing Scheduler` :  
     As the main scheduler, the Test Case Scheduler will:
     1. Parse the testing request
@@ -72,15 +69,45 @@ But We can run `testserver` and `ocitd` on a single machine with the default con
 to get a first impression of the OCT-engine.
 
 ```
+## Prepare 
 git clone https://github.com/huawei-openlab/oct-engine.git
 cd oct-engine/services
 make
 cd scheduler
 ./scheduler &
-cd ../ocitd
+cd ../octd 
+./octd &
 cd ../casemanager
-# choose a testcase.
-./casemanager
+./casemanager &
+
+## Choose a testcase
+1. curl localhost:8011/case
+   {
+        "Status": "ok",
+        "Message": "1 cases founded",
+        "Data": [
+                {
+                        "ID": "71e80571dbe09a0fb166949000
+                        ...
+                }
+   }
+
+## Start a task bases on a case
+2. curl  -d  71e80571dbe09a0fb16694900095e429  localhost:8011/task
+   {
+        "Status": "ok",
+        "Message": "047a07950446e24c1aa0c6324abf6770",
+        "Data": null
+   }
+
+## Run the task
+3. curl -d apply localhost:8011/task/047a07950446e24c1aa0c6324abf6770
+   curl -d deploy localhost:8011/task/047a07950446e24c1aa0c6324abf6770
+   curl -d run localhost:8011/task/047a07950446e24c1aa0c6324abf6770
+
+## Get the report
+4. curl localhost:8011/task/047a07950446e24c1aa0c6324abf6770/report > report.tar.gz
+
 ```
 
 ### Quick look of the testing report
