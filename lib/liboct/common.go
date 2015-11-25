@@ -12,6 +12,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"os/exec"
 	"path"
 )
 
@@ -406,4 +407,15 @@ func MD5(data string) (val string) {
 	io.WriteString(t, data)
 	return fmt.Sprintf("%x", t.Sum(nil))
 
+}
+
+func ExecSH(scripts string, dir string) bool {
+	cmd := exec.Command("/bin/sh", "-c", scripts)
+	cmd.Dir = dir
+	cmd.Stdin = os.Stdin
+	if _, err := cmd.CombinedOutput(); err != nil {
+		return false
+	} else {
+		return true
+	}
 }

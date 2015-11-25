@@ -19,6 +19,11 @@ type OCTDConfig struct {
 	TSurl string
 	Port  int
 	Debug bool
+
+	Class           string
+	Distribution    string
+	ContainerDaemon string
+	ContainerClient string
 }
 
 const OCTDCacheDir = "/tmp/.octd_cache"
@@ -75,17 +80,49 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func RunCommand(cmd string, dir string) bool {
+func RunCommand(action liboct.TestActionCommand, id string) bool {
+	dir := GetWorkingDir(id)
 	if pubConfig.Debug {
-		fmt.Println("Run the command < ", cmd, ">  in ", dir)
+		fmt.Println("Run the command < ", action.Command, ">  in ", dir)
 	}
 	//check it since some case only has a config.json
 	liboct.PreparePath(dir, "")
-	os.Chdir(dir)
 
-	c := exec.Command("/bin/sh", "-c", cmd)
-	c.Run()
-	return true
+	if pubConfig.Class == "os" {
+		var sh string
+		//For 'os', the dir is the way to differentiate tasks
+		switch liboct.TestAction(action.Action) {
+		case liboct.TestActionDeploy:
+			sh = action.Command
+		case liboct.TestActionRun:
+			sh = action.Command
+		case liboct.TestActionCollect:
+			return true
+		case liboct.TestActionDestroy:
+			//TODO: remove the dir
+			return true
+		}
+		return liboct.ExecSH(sh, dir)
+	} else if pubConfig.Class == "container" {
+		var sh string
+		//For 'container', the 'dir' is the way to store test files and use 'id' to differentiate tasks
+		clientCommand := pubConfig.ContainerClient
+		switch liboct.TestAction(action.Action) {
+		case liboct.TestActionDeploy:
+			//TODO: mount to /test dir, add to spec!
+			sh = fmt.Sprintf("%s -v %s setID %s", clientCommand, dir, "/test", id)
+		case liboct.TestActionRun:
+			sh = fmt.Sprintf("%s start %s", clientCommand, id)
+		case liboct.TestActionCollect:
+			return true
+		case liboct.TestActionDestroy:
+			sh = fmt.Sprintf("%s remove %s", clientCommand, id)
+		}
+
+		return liboct.ExecSH(sh, dir)
+	}
+
+	return false
 }
 
 //TODO: the working dir should be defined in the spec.
@@ -98,7 +135,7 @@ func PostTaskAction(w http.ResponseWriter, r *http.Request) {
 	result, _ := ioutil.ReadAll(r.Body)
 	fmt.Println("Post task action ", string(result))
 	r.Body.Close()
-	cmd, err := liboct.ActionCommandFromString(string(result))
+	action, err := liboct.ActionCommandFromString(string(result))
 	if err != nil {
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = "Invalid action command"
@@ -109,9 +146,7 @@ func PostTaskAction(w http.ResponseWriter, r *http.Request) {
 
 	id := r.URL.Query().Get(":ID")
 
-	wdir := GetWorkingDir(id)
-	//TODO: Just handle the deploy work now
-	if RunCommand(cmd.Command, wdir) {
+	if RunCommand(action, id) {
 		ret.Status = liboct.RetStatusOK
 	} else {
 		ret.Status = liboct.RetStatusFailed
@@ -146,6 +181,14 @@ func init() {
 		return
 	}
 
+	if pubConfig.Class == "container" {
+		cmd := exec.Command("/bin/sh", "-c", pubConfig.ContainerDaemon)
+		cmd.Stdin = os.Stdin
+		if _, err := cmd.CombinedOutput(); err != nil {
+			fmt.Errorf("Error in running container daemon %s.", pubConfig.ContainerDaemon)
+			return
+		}
+	}
 	RegisterToTestServer()
 }
 
