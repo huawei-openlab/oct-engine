@@ -1,7 +1,7 @@
 package main
 
 import (
-	"../../lib/liboct"
+	"../../liboct"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"

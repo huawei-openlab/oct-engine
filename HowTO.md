@@ -8,6 +8,8 @@ Following these steps:
 
 ```
 ## Prepare
+go get github.com/drone/routes
+
 git clone https://github.com/huawei-openlab/oct-engine.git
 cd oct-engine/services
 make

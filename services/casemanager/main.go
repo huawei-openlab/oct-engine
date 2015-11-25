@@ -1,10 +1,10 @@
 package main
 
 import (
-	"../../lib/liboct"
-	"../../lib/routes"
+	"../../liboct"
 	"encoding/json"
 	"fmt"
+	"github.com/drone/routes"
 	"log"
 	"net/http"
 	"os"
