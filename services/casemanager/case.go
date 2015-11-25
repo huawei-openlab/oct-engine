@@ -23,9 +23,10 @@ func ListRepos(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var rl []liboct.DBInterface
-	ids := liboct.DBLookup(liboct.DBRepo, query)
+	db := liboct.GetDefaultDB()
+	ids := db.Lookup(liboct.DBRepo, query)
 	for index := 0; index < len(ids); index++ {
-		repo, _ := liboct.DBGet(liboct.DBRepo, ids[index])
+		repo, _ := db.Get(liboct.DBRepo, ids[index])
 		rl = append(rl, repo)
 	}
 
@@ -40,8 +41,8 @@ func ListRepos(w http.ResponseWriter, r *http.Request) {
 func GetRepo(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
 	id := r.URL.Query().Get(":ID")
-
-	if repo, err := liboct.DBGet(liboct.DBRepo, id); err == nil {
+	db := liboct.GetDefaultDB()
+	if repo, err := db.Get(liboct.DBRepo, id); err == nil {
 		ret.Status = liboct.RetStatusOK
 		ret.Data = repo
 	} else {
@@ -56,7 +57,7 @@ func GetRepo(w http.ResponseWriter, r *http.Request) {
 func AddRepo(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
 	action := r.URL.Query().Get("Action")
-
+	db := liboct.GetDefaultDB()
 	//Add and refresh
 	if action == "Add" {
 		var repo liboct.TestCaseRepo
@@ -68,7 +69,7 @@ func AddRepo(w http.ResponseWriter, r *http.Request) {
 			ret.Message = fmt.Sprintf("The repo is invalid.")
 		} else {
 			if err := repo.IsValid(); err == nil {
-				if id, e := liboct.DBAdd(liboct.DBRepo, repo); e == nil {
+				if id, e := db.Add(liboct.DBRepo, repo); e == nil {
 					ret.Status = liboct.RetStatusOK
 					RefreshRepo(id)
 				} else {
@@ -81,7 +82,7 @@ func AddRepo(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else if action == "Refresh" {
-		ids := liboct.DBLookup(liboct.DBRepo, liboct.DBQuery{})
+		ids := db.Lookup(liboct.DBRepo, liboct.DBQuery{})
 		for index := 0; index < len(ids); index++ {
 			RefreshRepo(ids[index])
 		}
@@ -99,8 +100,8 @@ func ModifyRepo(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
 	repoID := r.URL.Query().Get(":ID")
 	action := r.URL.Query().Get("Action")
-
-	val, err := liboct.DBGet(liboct.DBRepo, repoID)
+	db := liboct.GetDefaultDB()
+	val, err := db.Get(liboct.DBRepo, repoID)
 	if err != nil {
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = fmt.Sprintf("The repo %s is not exist.", repoID)
@@ -120,7 +121,7 @@ func ModifyRepo(w http.ResponseWriter, r *http.Request) {
 		} else {
 			oldRepo, _ := liboct.RepoFromString(val.String())
 			oldRepo.Modify(newRepo)
-			liboct.DBUpdate(liboct.DBRepo, repoID, oldRepo)
+			db.Update(liboct.DBRepo, repoID, oldRepo)
 			RefreshRepo(repoID)
 			ret.Status = liboct.RetStatusOK
 		}
@@ -138,17 +139,19 @@ func ModifyRepo(w http.ResponseWriter, r *http.Request) {
 
 func CleanRepo(repo liboct.TestCaseRepo) {
 	var query liboct.DBQuery
+	db := liboct.GetDefaultDB()
 	query.Params = make(map[string]string)
 	query.Params["RepoID"] = repo.GetID()
-	ids := liboct.DBLookup(liboct.DBRepo, query)
+	ids := db.Lookup(liboct.DBRepo, query)
 	for index := 0; index < len(ids); index++ {
-		liboct.DBRemove(liboct.DBCase, ids[index])
+		db.Remove(liboct.DBCase, ids[index])
 	}
 }
 
 //This refresh the 'cache' maintained in casemanager
 func RefreshRepo(id string) {
-	val, err := liboct.DBGet(liboct.DBRepo, id)
+	db := liboct.GetDefaultDB()
+	val, err := db.Get(liboct.DBRepo, id)
 	if err != nil {
 		return
 	}
@@ -158,7 +161,7 @@ func RefreshRepo(id string) {
 		cases := repo.GetCases()
 		for index := 0; index < len(cases); index++ {
 			fmt.Println("case loaded ", cases[index])
-			liboct.DBAdd(liboct.DBCase, cases[index])
+			db.Add(liboct.DBCase, cases[index])
 		}
 	}
 }
@@ -166,7 +169,8 @@ func RefreshRepo(id string) {
 func RefreshRepos(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
 
-	ids := liboct.DBLookup(liboct.DBRepo, liboct.DBQuery{})
+	db := liboct.GetDefaultDB()
+	ids := db.Lookup(liboct.DBRepo, liboct.DBQuery{})
 	for index := 0; index < len(ids); index++ {
 		RefreshRepo(ids[index])
 	}
@@ -177,6 +181,7 @@ func RefreshRepos(w http.ResponseWriter, r *http.Request) {
 
 func ListCases(w http.ResponseWriter, r *http.Request) {
 	//Need better explaination of 'status', currently, only hasReport/isUpdated
+	db := liboct.GetDefaultDB()
 	var query liboct.DBQuery
 	page_string := r.URL.Query().Get("Page")
 	page, err := strconv.Atoi(page_string)
@@ -194,11 +199,11 @@ func ListCases(w http.ResponseWriter, r *http.Request) {
 		query.Params = make(map[string]string)
 		query.Params["Status"] = status
 	}
-	ids := liboct.DBLookup(liboct.DBCase, query)
+	ids := db.Lookup(liboct.DBCase, query)
 
 	var caseList []liboct.TestCase
 	for index := 0; index < len(ids); index++ {
-		if val, err := liboct.DBGet(liboct.DBCase, ids[index]); err == nil {
+		if val, err := db.Get(liboct.DBCase, ids[index]); err == nil {
 			tc, _ := liboct.CaseFromString(val.String())
 			caseList = append(caseList, tc)
 		}
@@ -215,8 +220,9 @@ func ListCases(w http.ResponseWriter, r *http.Request) {
 
 func GetCase(w http.ResponseWriter, r *http.Request) {
 	//TODO: support another query method : repo/group/name
+	db := liboct.GetDefaultDB()
 	id := r.URL.Query().Get(":ID")
-	if val, err := liboct.DBGet(liboct.DBCase, id); err == nil {
+	if val, err := db.Get(liboct.DBCase, id); err == nil {
 		tc, _ := liboct.CaseFromString(val.String())
 		value := tc.GetBundleContent()
 
@@ -226,13 +232,15 @@ func GetCase(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	w.WriteHeader(404)
 	w.Write([]byte("Cannot get the case."))
 }
 
 func GetCaseReport(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
+	db := liboct.GetDefaultDB()
 	id := r.URL.Query().Get(":ID")
-	if val, err := liboct.DBGet(liboct.DBCase, id); err == nil {
+	if val, err := db.Get(liboct.DBCase, id); err == nil {
 		tc, _ := liboct.CaseFromString(val.String())
 		content := tc.GetReportContent()
 		if len(content) > 0 {

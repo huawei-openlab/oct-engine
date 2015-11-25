@@ -190,10 +190,11 @@ func (t *TestUnit) Apply() error {
 	}
 	t.Status = TestStatusAllocating
 
-	ids := DBLookup(DBResource, DBQuery{})
+	db := GetDefaultDB()
+	ids := db.Lookup(DBResource, DBQuery{})
 	var id string
 	for index := 0; index < len(ids); index++ {
-		resInterface, _ := DBGet(DBResource, ids[index])
+		resInterface, _ := db.Get(DBResource, ids[index])
 		res, _ := ResourceFromString(resInterface.String())
 		if res.IsQualify(t.ResourceCommon) {
 			id = ids[index]
@@ -212,7 +213,8 @@ func (t *TestUnit) Apply() error {
 }
 
 func (t *TestUnit) Deploy() error {
-	resInterface, err := DBGet(DBResource, t.ResourceID)
+	db := GetDefaultDB()
+	resInterface, err := db.Get(DBResource, t.ResourceID)
 	if err != nil {
 		return err
 	}
@@ -259,7 +261,8 @@ func (t *TestUnit) Collect() error {
 	if t.Status != TestStatusRun && t.Status != TestStatusCollectFailed && t.Status != TestStatusCollected {
 		return errors.New(fmt.Sprintf("Cannot collect the report when the current status is :%s.", t.Status))
 	}
-	resInterface, err := DBGet(DBResource, t.ResourceID)
+	db := GetDefaultDB()
+	resInterface, err := db.Get(DBResource, t.ResourceID)
 	if err != nil {
 		return err
 	}
@@ -299,7 +302,8 @@ func (t *TestUnit) Destroy() error {
 
 func (t *TestUnit) command(action TestAction) error {
 	fmt.Println("Test Unit command ", action)
-	resInterface, err := DBGet(DBResource, t.ResourceID)
+	db := GetDefaultDB()
+	resInterface, err := db.Get(DBResource, t.ResourceID)
 	if err != nil {
 		return err
 	}

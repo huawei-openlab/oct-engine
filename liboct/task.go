@@ -166,7 +166,8 @@ func (task *TestTask) Command(action TestAction) (err error) {
 		return errors.New(fmt.Sprintf("The action %s is not supported.", action))
 	}
 	fmt.Println("Command ", action, "  Update  ", task)
-	DBUpdate(DBTask, task.ID, task)
+	db := GetDefaultDB()
+	db.Update(DBTask, task.ID, task)
 	return nil
 }
 
@@ -185,6 +186,7 @@ func (task *TestTask) Loop() (needContinue error) {
 	default:
 		needContinue = nil
 	}
-	DBUpdate(DBTask, task.ID, task)
+	db := GetDefaultDB()
+	db.Update(DBTask, task.ID, task)
 	return needContinue
 }

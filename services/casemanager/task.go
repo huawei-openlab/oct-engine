@@ -14,8 +14,9 @@ func AddTask(w http.ResponseWriter, r *http.Request) {
 	result, _ := ioutil.ReadAll(r.Body)
 	r.Body.Close()
 
+	db := liboct.GetDefaultDB()
 	caseID := string(result)
-	caseInterface, err := liboct.DBGet(liboct.DBCase, caseID)
+	caseInterface, err := db.Get(liboct.DBCase, caseID)
 	if err != nil {
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = err.Error()
@@ -28,7 +29,7 @@ func AddTask(w http.ResponseWriter, r *http.Request) {
 	bundleURL := tc.GetBundleTarURL()
 	postURL := pubConfig.SchedulerURL
 	if task, err := liboct.TestTaskNew(postURL, bundleURL, liboct.SchedulerDefaultPrio); err == nil {
-		id, _ := liboct.DBAdd(liboct.DBTask, task)
+		id, _ := db.Add(liboct.DBTask, task)
 		ret.Status = liboct.RetStatusOK
 		ret.Message = id
 	} else {
@@ -41,8 +42,9 @@ func AddTask(w http.ResponseWriter, r *http.Request) {
 
 func GetTaskStatus(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
+	db := liboct.GetDefaultDB()
 	id := r.URL.Query().Get(":TaskID")
-	if taskInterface, err := liboct.DBGet(liboct.DBTask, id); err == nil {
+	if taskInterface, err := db.Get(liboct.DBTask, id); err == nil {
 		ret.Status = liboct.RetStatusOK
 		ret.Data = taskInterface
 	} else {
@@ -56,8 +58,9 @@ func GetTaskStatus(w http.ResponseWriter, r *http.Request) {
 // redirect to local to test
 func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
+	db := liboct.GetDefaultDB()
 	id := r.URL.Query().Get(":TaskID")
-	taskInterface, err := liboct.DBGet(liboct.DBTask, id)
+	taskInterface, err := db.Get(liboct.DBTask, id)
 	if err != nil {
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = "Cannot find the task, wrong ID provided"
@@ -93,6 +96,7 @@ func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 
 func PostTaskAction(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
+	db := liboct.GetDefaultDB()
 	result, _ := ioutil.ReadAll(r.Body)
 	r.Body.Close()
 	action, err := liboct.TestActionFromString(string(result))
@@ -104,7 +108,7 @@ func PostTaskAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.URL.Query().Get(":TaskID")
-	taskInterface, err := liboct.DBGet(liboct.DBTask, id)
+	taskInterface, err := db.Get(liboct.DBTask, id)
 	if err != nil {
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = err.Error()
@@ -127,6 +131,7 @@ func PostTaskAction(w http.ResponseWriter, r *http.Request) {
 func ListTasks(w http.ResponseWriter, r *http.Request) {
 	//TODO status
 	var query liboct.DBQuery
+	db := liboct.GetDefaultDB()
 	pageStr := r.URL.Query().Get("Page")
 	page, err := strconv.Atoi(pageStr)
 	if err == nil {
@@ -138,11 +143,11 @@ func ListTasks(w http.ResponseWriter, r *http.Request) {
 		query.PageSize = pageSize
 	}
 
-	ids := liboct.DBLookup(liboct.DBTask, query)
+	ids := db.Lookup(liboct.DBTask, query)
 
 	var tl []liboct.DBInterface
 	for index := 0; index < len(ids); index++ {
-		task, _ := liboct.DBGet(liboct.DBTask, ids[index])
+		task, _ := db.Get(liboct.DBTask, ids[index])
 		tl = append(tl, task)
 	}
 	var ret liboct.HttpRet

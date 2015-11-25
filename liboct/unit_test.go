@@ -59,11 +59,12 @@ func TestUnitString(t *testing.T) {
 }
 
 func TestUnitApply(t *testing.T) {
-	DBRegist(DBResource)
+	db := GetDefaultDB()
+	db.RegistCollect(DBResource)
 	resA := DemoResourceA()
-	DBAdd(DBResource, resA)
+	db.Add(DBResource, resA)
 	resB := DemoResourceB()
-	DBAdd(DBResource, resB)
+	db.Add(DBResource, resB)
 
 	unit := DemoUnitA()
 	if unit.Apply() == nil {

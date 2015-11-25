@@ -22,8 +22,9 @@ type SchedulerConfig struct {
 
 func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
+	db := liboct.GetDefaultDB()
 	id := r.URL.Query().Get(":ID")
-	sInterface, err := liboct.DBGet(liboct.DBScheduler, id)
+	sInterface, err := db.Get(liboct.DBScheduler, id)
 	if err != nil {
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = err.Error()
@@ -39,10 +40,10 @@ func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 		ret.Message = err.Error()
 		ret_string, _ := json.MarshalIndent(ret, "", "\t")
 		w.Write([]byte(ret_string))
-		liboct.DBUpdate(liboct.DBScheduler, id, s)
+		db.Update(liboct.DBScheduler, id, s)
 		return
 	} else {
-		liboct.DBUpdate(liboct.DBScheduler, id, s)
+		db.Update(liboct.DBScheduler, id, s)
 	}
 
 	//Tar the reports in the cacheDir
@@ -74,8 +75,9 @@ func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 
 func ReceiveTaskCommand(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
+	db := liboct.GetDefaultDB()
 	id := r.URL.Query().Get(":ID")
-	sInterface, err := liboct.DBGet(liboct.DBScheduler, id)
+	sInterface, err := db.Get(liboct.DBScheduler, id)
 	if err != nil {
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = err.Error()
@@ -103,7 +105,7 @@ func ReceiveTaskCommand(w http.ResponseWriter, r *http.Request) {
 			ret.Status = liboct.RetStatusFailed
 			ret.Message = e.Error()
 		}
-		liboct.DBUpdate(liboct.DBScheduler, id, s)
+		db.Update(liboct.DBScheduler, id, s)
 	}
 
 	ret_string, _ := json.MarshalIndent(ret, "", "\t")
@@ -114,7 +116,8 @@ func ReceiveTaskCommand(w http.ResponseWriter, r *http.Request) {
 // we need to move it to a better place
 // /tmp/.../A.tar.gz --> /tmp/.../id/A.tar.gz
 func updateSchedulerBundle(id string, oldURL string) {
-	sInterface, _ := liboct.DBGet(liboct.DBScheduler, id)
+	db := liboct.GetDefaultDB()
+	sInterface, _ := db.Get(liboct.DBScheduler, id)
 	s, _ := liboct.SchedulerFromString(sInterface.String())
 	dir := path.Dir(oldURL)
 	newURL := fmt.Sprintf("%s/%s", path.Join(dir, id), path.Base(oldURL))
@@ -123,13 +126,14 @@ func updateSchedulerBundle(id string, oldURL string) {
 	os.Rename(oldURL, newURL)
 	//bundleURL is the directory of the bundle
 	s.Case.SetBundleURL(strings.TrimSuffix(newURL, ".tar.gz"))
-	liboct.DBUpdate(liboct.DBScheduler, id, s)
+	db.Update(liboct.DBScheduler, id, s)
 }
 
 func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("ReceiveTask begin")
 	var ret liboct.HttpRet
 	var tc liboct.TestCase
+	db := liboct.GetDefaultDB()
 	realURL, _ := liboct.ReceiveFile(w, r, liboct.SchedulerCacheDir)
 	tc, err := liboct.CaseFromTar(realURL, "")
 	if err != nil {
@@ -144,7 +148,7 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 
 	err = s.Command(liboct.TestActionApply)
 	if err == nil {
-		if id, e := liboct.DBAdd(liboct.DBScheduler, s); e == nil {
+		if id, e := db.Add(liboct.DBScheduler, s); e == nil {
 			updateSchedulerBundle(id, realURL)
 			ret.Status = liboct.RetStatusOK
 			ret.Message = id
@@ -175,8 +179,9 @@ func init() {
 		return
 	}
 
-	liboct.DBRegist(liboct.DBResource)
-	liboct.DBRegist(liboct.DBScheduler)
+	db := liboct.GetDefaultDB()
+	db.RegistCollect(liboct.DBResource)
+	db.RegistCollect(liboct.DBScheduler)
 	if len(pubConfig.ServerListFile) == 0 {
 		return
 	}
@@ -193,7 +198,7 @@ func init() {
 	}
 
 	for index := 0; index < len(rl); index++ {
-		if _, e := liboct.DBAdd(liboct.DBResource, rl[index]); e == nil {
+		if _, e := db.Add(liboct.DBResource, rl[index]); e == nil {
 			fmt.Println(rl[index])
 		}
 	}

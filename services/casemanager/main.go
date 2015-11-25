@@ -31,10 +31,10 @@ func init() {
 		fmt.Errorf("Error in parse casemanager.conf")
 		return
 	}
-
-	liboct.DBRegist(liboct.DBCase)
-	liboct.DBRegist(liboct.DBRepo)
-	liboct.DBRegist(liboct.DBTask)
+	db := liboct.GetDefaultDB()
+	db.RegistCollect(liboct.DBCase)
+	db.RegistCollect(liboct.DBRepo)
+	db.RegistCollect(liboct.DBTask)
 
 	repos := pubConfig.Repos
 	for index := 0; index < len(repos); index++ {
@@ -45,7 +45,7 @@ func init() {
 			}
 		}
 		fmt.Println(repos[index])
-		if id, err := liboct.DBAdd(liboct.DBRepo, repos[index]); err == nil {
+		if id, err := db.Add(liboct.DBRepo, repos[index]); err == nil {
 			RefreshRepo(id)
 		}
 	}

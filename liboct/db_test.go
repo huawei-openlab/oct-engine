@@ -6,14 +6,15 @@ import (
 )
 
 func TestDBRegist(t *testing.T) {
-	err := DBRegist(DBRepo)
+	db := GetDefaultDB()
+	err := db.RegistCollect(DBRepo)
 	if err == nil {
 		t.Log("DB Regist OK successful!")
 	} else {
 		t.Error("DB Regist OK failed!")
 	}
 
-	err = DBRegist(DBRepo)
+	err = db.RegistCollect(DBRepo)
 	if err != nil {
 		t.Log("DB Regist Failed successful!")
 	} else {
@@ -23,19 +24,20 @@ func TestDBRegist(t *testing.T) {
 
 func TestDBGet(t *testing.T) {
 	var repo TestCaseRepo
-	DBRegist(DBRepo)
+	db := GetDefaultDB()
+	db.RegistCollect(DBRepo)
 
 	repo.Name = "repo name"
-	id, _ := DBAdd(DBRepo, repo)
+	id, _ := db.Add(DBRepo, repo)
 
-	_, err := DBGet(DBRepo, id)
+	_, err := db.Get(DBRepo, id)
 	if err == nil {
 		t.Log("DBGet OK successful !")
 	} else {
 		t.Error("DBGet OK failed !")
 	}
 
-	_, err = DBGet(DBRepo, "invalid")
+	_, err = db.Get(DBRepo, "invalid")
 	if err != nil {
 		t.Log("DBGet Failed successful !")
 	} else {
@@ -45,19 +47,20 @@ func TestDBGet(t *testing.T) {
 
 func TestDBUpdate(t *testing.T) {
 	var repo TestCaseRepo
-	DBRegist(DBRepo)
+	db := GetDefaultDB()
+	db.RegistCollect(DBRepo)
 
 	repo.Name = "repo name"
-	id, _ := DBAdd(DBRepo, repo)
+	id, _ := db.Add(DBRepo, repo)
 
 	repo.Name = "updated name"
-	if err := DBUpdate(DBRepo, id, repo); err == nil {
+	if err := db.Update(DBRepo, id, repo); err == nil {
 		t.Log("DBUpdate OK successful !")
 	} else {
 		t.Error("DBUpdate Failed failed !")
 	}
 
-	nRepoI, _ := DBGet(DBRepo, id)
+	nRepoI, _ := db.Get(DBRepo, id)
 	nRepo, _ := RepoFromString(nRepoI.String())
 	if nRepo.Name == repo.Name {
 		t.Log("DBUpdate Name OK successful !")
