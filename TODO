@@ -1,2 +1,6 @@
-- split cases to another repo
-- if no `ocitd`, use `scp` (auth issue?)
+1. case/task query
+2. query report or case before download them
+3. TODO/FIXME in codes...
+4. harbour integration
+5. document
+6. more cases
