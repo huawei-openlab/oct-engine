@@ -1,4 +1,4 @@
 ## APIs in different service
-- [Scheduler](./scheduler/API.md "Scheduler APIs")
-- [Case Manager](./casemanager/API.md "Case Manager")
-- [OCTD](./octd/API.md "OCTD")
+- [Scheduler](./services/scheduler/API.md "Scheduler APIs")
+- [Case Manager](./services/casemanager/API.md "Case Manager")
+- [OCTD](./services/octd/API.md "OCTD")
