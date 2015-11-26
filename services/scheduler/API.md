@@ -1,25 +1,23 @@
-# Test Server 
-The Test Server is used to manage the server resource.
+# Scheduler 
+The Scheduler is used to manage the server resource.
 
 The [configuration](#configs "configuration") file is used for the OCT users to set his/her own configuration.
 
-The [openAPIs](#apis "APIs") are used for the developers to integrate the 'Test Server' with other services.
+The [openAPIs](#apis "APIs") are used for the developers to integrate the 'Scheduler' with other services.
 
 The [attributes](#attributes "attributes") are listed at the end of this document.
 
 ##Configs
 |Key|Type|Description|Example|
 |------|----|------| ----- |
-| Port | int | The port of the Test Server.| 8001 |
+| Port | int | The port of the Scheduler.| 8001 |
 | ServerListFile | string | For simple cases, we put all the server infos into a file.| ["servers.conf"](#servers) |
-| CacheDir | string | The cache dir where the temporal files stored.| "/tmp/testserver_cache" |
 | Debug | bool | Print the debug information on the screen| true, default to false |
 
 ```
 {
 	"Port": 8001,
 	"ServerListFile": "servers.conf",
-	"CacheDir" : "/tmp/testserver_cache", 
 	"Debug": true
 }
 ```
@@ -55,13 +53,13 @@ The [attributes](#attributes "attributes") are listed at the end of this documen
 
 |Method|Path|Summary|Description|
 |------|----|------|-----------|
-| POST | `/task` | [Upload files](#upload "Upload") | Upload the test case files, name: taskID.tar.gz. Used by 'Scheduler'|
-| GET | `/:ID/result` | [Get test result](#result "Result") | Fetch the case result file. %taskid-result.tar.gz. Used by 'Schedular'|
-| GET | `/:ID/status` | [Get testing status result](#get-status "Get Status") | Fetch the testing status. Used by 'Schedular'|
-| POST | `/:ID/status` | [Set the testing status result](#set-status "Set Status") | Set the testing status. Used by 'OCTD'|
-| GET | `/os` | [Resource](#resource "Resource") | Get the host resource on the server.|
-| POST| `/os` | [Add resource](#add "Add resource") | Add a new host OS node, usually done by OCTD automaticly.|
-| GET | `/os/:OSID` | [Detailed Resource](#details "Details") | Get the detailed information of a host OS.|
+| POST | `/task` | [Upload files](#upload "Upload") | Upload the test case files, name: taskID.tar.gz|
+| GET | `/task/:ID/report` | [Get test report](#report "Report") | Fetch the case result file. %taskid-result.tar.gz|
+| GET | `/task/:ID` | [Get task status](#get-status "Get Status") | Fetch the testing status|
+| POST | `/task/:ID` | [Send the testing action to task](#send-action "Send Action") | Send the testing action|
+| GET | `/resource` | [Resource](#resource "Resource") | Get the host resource on the server.|
+| POST| `/resource` | [Add resource](#add "Add resource") | Add a new host OS node, usually done by OCTD automaticly.|
+| GET | `/resource/:ID` | [Detailed Resource](#details "Details") | Get the detailed information of a host OS.|
 
 ###upload
 
@@ -80,10 +78,10 @@ Upload the test files, name: taskID.tar.gz
 
 ```
 
-###result
+###report
 
 ```
-GET /:ID/result
+GET /task/:ID/report
 ```
 
 **Response**
@@ -107,7 +105,7 @@ The returned value should be like this:
 ###get-status
 
 ```
-GET /:ID/status
+GET /task/:ID
 ```
 
 **Response**
@@ -136,23 +134,23 @@ GET /:ID/status
   }
 ```
 
-###set-status
+###send action
 
 ```
-POST /:ID/status
+POST /task/:ID
 ```
 
 **Input**
 
 | *Name* | *Type* | *Description* |
 | -------| ------ | --------- |
-| Status | string | The status of the task.|
-| Object | string | The object name in the task.|
+| Action | string | The action of the task.|
+| Command | string | The command of the action.|
 
 **Example**
 
 ```
-  curl -i -d '{"Status":"deploy", "Object": "hostA"}'  /10002/status
+  curl -i -d '{"Action":"deploy", "Command": "go get ...."}'  /10002/status
 ```
 
 **Response**
@@ -160,14 +158,13 @@ POST /:ID/status
 
 ``` 
   {"Status": "OK",
-   "Message": "The status is changed"
   }
 ```
 
 ####resource
 
 ```
-GET /os
+GET /resource
 ```
 **Parameters**
 
@@ -212,11 +209,12 @@ GET /os
 
 ###add
 ```
-POST /os
+POST /resource
 ```
-Add a new host OS node to the Test Server. Most time it is done automaticly when an 'octd' daemon start running in a new node.
+Add a new host OS node to the Scheduler. Most time it is done automaticly when an 'octd' daemon start running in a new node.
 
 **Input**
+/resource
 
 | *Name* | *Type* | *Description* |
 | -------| ------ | --------- |
@@ -238,7 +236,7 @@ Add a new host OS node to the Test Server. Most time it is done automaticly when
 ###details
 
 ```
-GET /os/:OSID
+GET /resource/:ID
 ```
 
 On the TODO list, do not expose the details for now.

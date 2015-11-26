@@ -1,15 +1,15 @@
 #OCTD 
-The 'OCID' is the program installed on the hostOS, used to communicate with the 'Test Server'.
+The 'OCID' is the program installed on the hostOS, used to communicate with the 'Scheduler'.
 (TODO:  All 'OCITD' should rename by OCTD since the project name changed)
 
 - The [configuration](#configs "configuration") file is used for the OCT users to set his/her own configuration.
-- The [openAPIs](#apis "APIs") are used for the 'OCT' developer to integrate 'OCTD' with the 'Test Server'.
+- The [openAPIs](#apis "APIs") are used for the 'OCT' developer to integrate 'OCTD' with the 'Scheduler'.
 - The [attributes](#attributes "attributes") are listed at the end of this document.
 
 ##Configs
 |Key|Type|Description|Example|
 |------|----|------| ----- |
-| TSurl | string | The url of the Test Server, with the port| "http://localhost:8001" |
+| TSurl | string | The url of the Scheduler, with the port| "http://localhost:8001" |
 | Port | int | Port of the OCTD daemon| 9001 |
 | CacheDir | string | Where are all the temporary files stored| "/tmp/octd-cache" |
 | Debug | bool | Print the debug information on the screen| true, default to false |
@@ -28,8 +28,8 @@ The 'OCID' is the program installed on the hostOS, used to communicate with the 
 |Method|Path|Summary|Description|
 |------|----|------|-----------|
 | POST | `/task` | [Upload files](#task "Upload task file") | Upload the certain deploy files, name: taskID.tar.gz|
-| POST | `/command` | [Send commands](#command "Send the testing command") | Tell OCTD which commands need to run|
-| GET  | `/result` | [Result](#result "Get the result file") | Get the result file by the path|
+| POST | `/task/:TaskID` | [Send commands](#command "Send the testing command to a task") | Tell OCTD which commands need to run|
+| GET  | `/task/:TaskID/report` | [Report](#report "Get the report file") | Get the report file by the path|
 
 ###Task
 ```
@@ -54,7 +54,7 @@ Upload the certain deploy files, name: taskID.tar.gz
 ###command
 
 ```
-POST /command
+POST /task/:TaskID
 ```
 Tell OCTD which commands need to run. 
 
@@ -62,8 +62,8 @@ Tell OCTD which commands need to run.
 
 |Name|Type|Description|
 |------|-----|-----------|
-| ID | string | The task ID, same with the ID in 'Scheduler' and 'Test Server'|
-| Command | string | Command in the deploy.Cmd or run.Cmd in the config.json|
+| Action | string | The acion of the task, same with the ID in 'Scheduler' and 'Scheduler'|
+| Command | string | Command of the action|
 
 **Response**
 
@@ -75,7 +75,7 @@ Tell OCTD which commands need to run.
 
 ###Result
 ```
-GET /result
+GET /task/:TaskID/report
 ```
 
 **Parameters**
@@ -83,7 +83,7 @@ GET /result
 | *Name* | *Type* | *Description* |
 | -------| ------ | --------- |
 | File | string | The result file url. Defined in the config.json in each test case. |
-| ID | string | The task ID, same with the ID in 'Scheduler' and 'Test Server' |
+| ID | string | The task ID, same with the ID in 'Scheduler' and 'Scheduler' |
 
 **Response**
 
