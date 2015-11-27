@@ -54,7 +54,7 @@ func PreparePath(cachename string, filename string) (dir string) {
 }
 
 func SendFile(postURL string, fileURL string, params map[string]string) (ret HttpRet) {
-	logrus.Infof("SendFile ", postURL, fileURL)
+	logrus.Debugf("SendFile ", postURL, fileURL)
 	bodyBuf := &bytes.Buffer{}
 	bodyWriter := multipart.NewWriter(bodyBuf)
 	filename := path.Base(fileURL)
@@ -86,7 +86,7 @@ func SendFile(postURL string, fileURL string, params map[string]string) (ret Htt
 	}
 
 	for key, val := range params {
-		logrus.Infof("SendFile key", key, "  val ", val)
+		logrus.Debugf("SendFile key", key, "  val ", val)
 		_ = bodyWriter.WriteField(key, val)
 	}
 	//	contentType := bodyWriter.FormDataContentType()
@@ -162,7 +162,7 @@ func ReceiveFile(w http.ResponseWriter, r *http.Request, cacheURL string) (realU
 	r.ParseMultipartForm(32 << 20)
 	file, handler, err := r.FormFile("tcfile")
 
-	logrus.Infof("Receive file ", cacheURL, " ", handler.Filename)
+	logrus.Debugf("Receive file ", cacheURL, " ", handler.Filename)
 	params = make(map[string]string)
 
 	if r.MultipartForm != nil {
@@ -256,7 +256,7 @@ func TarDir(case_dir string) (tarURL string) {
 }
 
 func UntarFile(filename string, cacheURL string) {
-	logrus.Infof("UntarFile ", filename, cacheURL)
+	logrus.Debugf("UntarFile ", filename, cacheURL)
 	_, err := os.Stat(filename)
 	if err != nil {
 		logrus.Warn(err)

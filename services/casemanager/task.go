@@ -78,7 +78,7 @@ func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 	task, _ := liboct.TaskFromString(taskInterface.String())
 	// Here the task.PostURL is: http://ip:port/task/id
 	getURL := fmt.Sprintf("%s/report", task.PostURL)
-	logrus.Infof("Get url ", getURL)
+	logrus.Debugf("Get url ", getURL)
 	resp, err := http.Get(getURL)
 	if err != nil {
 		logrus.Warn(err)

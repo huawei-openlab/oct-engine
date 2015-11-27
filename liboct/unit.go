@@ -49,7 +49,7 @@ const (
 )
 
 func TestActionFromString(val string) (TestAction, error) {
-	logrus.Infof("test action get ", val)
+	logrus.Debugf("test action get ", val)
 	switch val {
 	case "apply":
 		return TestActionApply, nil
@@ -226,7 +226,7 @@ func (t *TestUnit) Deploy() error {
 	deployURL := fmt.Sprintf("%s/task", res.URL)
 	params := make(map[string]string)
 	params["id"] = t.SchedulerID
-	logrus.Infof("Test Unit deploy ", deployURL, t.BundleURL, t.SchedulerID)
+	logrus.Debugf("Test Unit deploy ", deployURL, t.BundleURL, t.SchedulerID)
 
 	tarURL := fmt.Sprintf("%s.tar.gz", t.BundleURL)
 	_, err = os.Stat(tarURL)
@@ -235,7 +235,7 @@ func (t *TestUnit) Deploy() error {
 		tarURL = TarFileList(files, t.BundleURL, "")
 	}
 	ret := SendFile(deployURL, tarURL, params)
-	logrus.Infof("Deploy result ", ret)
+	logrus.Debugf("Deploy result ", ret)
 	if ret.Status == RetStatusOK {
 		if err := t.command(TestActionDeploy); err == nil {
 			t.Status = TestStatusDeployed
@@ -247,7 +247,7 @@ func (t *TestUnit) Deploy() error {
 }
 
 func (t *TestUnit) Run() error {
-	logrus.Infof("TestUnit Run ", t)
+	logrus.Debugf("TestUnit Run ", t)
 	if t.Status != TestStatusDeployed && t.Status != TestStatusRunFailed {
 		return errors.New(fmt.Sprintf("Cannot run the test when the current status is :%s.", t.Status))
 	}
@@ -305,7 +305,7 @@ func (t *TestUnit) Destroy() error {
 }
 
 func (t *TestUnit) command(action TestAction) error {
-	logrus.Infof("Test Unit command ", action)
+	logrus.Debugf("Test Unit command ", action)
 	db := GetDefaultDB()
 	resInterface, err := db.Get(DBResource, t.ResourceID)
 	if err != nil {
@@ -328,7 +328,7 @@ func (t *TestUnit) command(action TestAction) error {
 	deployURL := fmt.Sprintf("%s/task/%s", res.URL, t.SchedulerID)
 
 	ret := SendCommand(deployURL, []byte(cmd.String()))
-	logrus.Infof("Send Command ", deployURL, cmd.String())
+	logrus.Debugf("Send Command ", deployURL, cmd.String())
 	if ret.Status == RetStatusOK {
 		return nil
 	}

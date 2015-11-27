@@ -82,25 +82,25 @@ func (res *Resource) GetID() string {
 
 func (res *Resource) IsQualify(req ResourceCommon) bool {
 	if req.Distribution != res.Distribution {
-		logrus.Infof("Distribution not fit")
+		logrus.Debugf("Distribution not fit")
 		return false
 	}
 	if req.Version != res.Version {
-		logrus.Infof("Version not fit")
+		logrus.Debugf("Version not fit")
 		return false
 	}
 	if req.Arch != res.Arch {
-		logrus.Infof("Arch not fit")
+		logrus.Debugf("Arch not fit")
 		return false
 	}
 
 	//TODO: better calculation
 	if req.CPU > res.CPU {
-		logrus.Infof("CPU not fit")
+		logrus.Debugf("CPU not fit")
 		return false
 	}
 	if req.Memory > res.Memory {
-		logrus.Infof("Memory not fit")
+		logrus.Debugf("Memory not fit")
 		return false
 	}
 	return true

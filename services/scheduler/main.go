@@ -55,7 +55,7 @@ func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 
 	//Tar the reports in the cacheDir
 	reportURL := path.Join(liboct.SchedulerCacheDir, s.ID, "reports.tar.gz")
-	logrus.Infof("Get reportURL ", reportURL)
+	logrus.Debugf("Get reportURL ", reportURL)
 	_, err = os.Stat(reportURL)
 	if err != nil {
 		logrus.Warn(err)
@@ -98,7 +98,7 @@ func ReceiveTaskCommand(w http.ResponseWriter, r *http.Request) {
 	s, _ := liboct.SchedulerFromString(sInterface.String())
 
 	result, _ := ioutil.ReadAll(r.Body)
-	logrus.Infof("Receive task Command ", string(result))
+	logrus.Debugf("Receive task Command ", string(result))
 	r.Body.Close()
 	/* Donnot use this now FIXME
 	var cmd liboct.TestActionCommand
@@ -141,7 +141,7 @@ func updateSchedulerBundle(id string, oldURL string) {
 }
 
 func ReceiveTask(w http.ResponseWriter, r *http.Request) {
-	logrus.Infof("ReceiveTask begin")
+	logrus.Debugf("ReceiveTask begin")
 	var ret liboct.HttpRet
 	var tc liboct.TestCase
 	db := liboct.GetDefaultDB()
