@@ -26,10 +26,12 @@ const (
 type ResourceCommon struct {
 	Class        ResourceClass
 	Distribution string
-	Version      string
-	Arch         string
-	CPU          int64
-	Memory       int64
+	//ResName is used in 'container', for example: ubuntu/busybox
+	ResName string
+	Version string
+	Arch    string
+	CPU     int64
+	Memory  int64
 }
 
 //This is record in the testing cluster
@@ -103,6 +105,7 @@ func (res *Resource) IsQualify(req ResourceCommon) bool {
 		logrus.Debugf("Memory not fit")
 		return false
 	}
+	//TODO: add ResName
 	return true
 }
 

@@ -200,8 +200,8 @@ func ReceiveFile(w http.ResponseWriter, r *http.Request, cacheURL string) (realU
 }
 
 // file name filelist is like this: './source/file'
-func TarFileList(filelist []string, case_dir string, object_name string) (tarURL string) {
-	tarURL = path.Join(case_dir, object_name) + ".tar.gz"
+func TarFileList(filelist []string, caseDir string, object_name string) (tarURL string) {
+	tarURL = path.Join(caseDir, object_name) + ".tar.gz"
 	fw, err := os.Create(tarURL)
 	if err != nil {
 		logrus.Warn(err)
@@ -214,13 +214,14 @@ func TarFileList(filelist []string, case_dir string, object_name string) (tarURL
 	defer tw.Close()
 
 	for index := 0; index < len(filelist); index++ {
-		source_file := filelist[index]
-		fi, err := os.Stat(path.Join(case_dir, source_file))
+		sourceFile := filelist[index]
+		logrus.Debugf("Tar file %s", sourceFile)
+		fi, err := os.Stat(path.Join(caseDir, sourceFile))
 		if err != nil {
 			logrus.Warn(err)
 			continue
 		}
-		fr, err := os.Open(path.Join(case_dir, source_file))
+		fr, err := os.Open(path.Join(caseDir, sourceFile))
 		if err != nil {
 			logrus.Warn(err)
 			continue
@@ -248,10 +249,10 @@ func GetDirFiles(base_dir string, dir string) (files []string) {
 
 }
 
-func TarDir(case_dir string) (tarURL string) {
-	files := GetDirFiles(case_dir, "")
-	case_name := path.Base(case_dir)
-	tarURL = TarFileList(files, case_dir, case_name)
+func TarDir(caseDir string) (tarURL string) {
+	files := GetDirFiles(caseDir, "")
+	case_name := path.Base(caseDir)
+	tarURL = TarFileList(files, caseDir, case_name)
 	return tarURL
 }
 

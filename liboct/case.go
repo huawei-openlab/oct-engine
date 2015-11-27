@@ -8,6 +8,8 @@ import (
 	"os"
 	"path"
 	"strings"
+
+	"github.com/Sirupsen/logrus"
 )
 
 const (
@@ -203,6 +205,7 @@ func (tc *TestCase) GetBundleTarURL() string {
 
 	bfi, err := os.Stat(tc.BundleURL)
 	if err != nil {
+		logrus.Warn(err)
 		return ""
 	}
 	tfi, err := os.Stat(fmt.Sprintf("%s.tar.gz", tc.BundleURL))

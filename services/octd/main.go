@@ -125,8 +125,9 @@ func RunCommand(action liboct.TestActionCommand, id string) bool {
 			return true
 		case liboct.TestActionRun:
 			//docker run  -w=/test -v /tmp/.OCT/1234/bundle:/test ubuntu sh exe.sh
-			//TODO: name is the container name, like busybox
-			sh = fmt.Sprintf("%s run -w=/octtest -v %s:/octtest  %s %s", clientCommand, workingDir, action.Name, action.Command)
+			//TODO: the ResName is the container name, so need to query if it exists. then need to pull in the apply session
+			//Now , use ubuntu as the default
+			sh = fmt.Sprintf("%s run -w=/octtest -v %s:/octtest  %s %s", clientCommand, workingDir, action.ResName, action.Command)
 		case liboct.TestActionCollect:
 			return true
 		case liboct.TestActionDestroy:

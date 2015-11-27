@@ -148,6 +148,7 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 	realURL, _ := liboct.ReceiveFile(w, r, liboct.SchedulerCacheDir)
 	tc, err := liboct.CaseFromTar(realURL, "")
 	if err != nil {
+		logrus.Warn(err)
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = err.Error()
 		ret_string, _ := json.MarshalIndent(ret, "", "\t")
@@ -164,10 +165,12 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 			ret.Status = liboct.RetStatusOK
 			ret.Message = id
 		} else {
+			logrus.Warn(err)
 			ret.Status = liboct.RetStatusFailed
 			ret.Message = e.Error()
 		}
 	} else {
+		logrus.Warn(err)
 		ret.Status = liboct.RetStatusFailed
 		ret.Message = err.Error()
 	}
