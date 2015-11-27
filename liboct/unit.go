@@ -97,6 +97,8 @@ type TestCommand struct {
 type TestActionCommand struct {
 	Action  string
 	Command string
+	//Used for container
+	Name string
 }
 
 func (t TestActionCommand) String() string {
@@ -311,6 +313,7 @@ func (t *TestUnit) command(action TestAction) error {
 	}
 
 	var cmd TestActionCommand
+	cmd.Name = t.Name
 	cmd.Action = string(action)
 	switch action {
 	case TestActionDeploy:

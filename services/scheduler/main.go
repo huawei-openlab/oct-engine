@@ -21,6 +21,10 @@ type SchedulerConfig struct {
 	Debug          bool
 }
 
+func GetTaskStatus(w http.ResponseWriter, r *http.Request) {
+	//TODO
+}
+
 func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
 	db := liboct.GetDefaultDB()
@@ -223,9 +227,10 @@ func main() {
 
 	mux.Get("/resource", GetResource)
 	mux.Post("/resource", PostResource)
-	mux.Get("/resource/:ID/status", GetResourceStatus)
+	mux.Get("/resource/:ID", GetResourceStatus)
 
 	mux.Post("/task", ReceiveTask)
+	mux.Get("/task/:ID", GetTaskStatus)
 	mux.Post("/task/:ID", ReceiveTaskCommand)
 	mux.Get("/task/:ID/report", GetTaskReport)
 

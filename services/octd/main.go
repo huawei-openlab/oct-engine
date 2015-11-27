@@ -33,22 +33,26 @@ const OCTDCacheDir = "/tmp/.octd_cache"
 var pubConfig OCTDConfig
 
 func GetTaskReport(w http.ResponseWriter, r *http.Request) {
-	//TODO
-	var realURL string
 	filename := r.URL.Query().Get("File")
 	id := r.URL.Query().Get(":ID")
 
-	_, err := os.Stat(filename)
-	if err == nil {
-		//absolute path
-		realURL = filename
-	} else {
-		realURL = path.Join(GetWorkingDir(id), filename)
+	db := liboct.GetDefaultDB()
+	taskInterface, err := db.Get(liboct.DBTask, id)
+	if err != nil {
+		logrus.Warnf("Cannot find the test job " + id)
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("Cannot find the test job " + id))
+		return
 	}
+
+	task, _ := liboct.TaskFromString(taskInterface.String())
+	workingDir := strings.TrimSuffix(task.BundleURL, ".tar.gz")
+	realURL := path.Join(workingDir, filename)
 	file, err := os.Open(realURL)
 	defer file.Close()
 	if err != nil {
-		//FIXME: add to head
+		logrus.Warnf("Cannot file the " + filename)
+		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("Cannot open the file: " + realURL))
 		return
 	}
@@ -61,17 +65,21 @@ func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 
 func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
+	db := liboct.GetDefaultDB()
 	realURL, params := liboct.ReceiveFile(w, r, OCTDCacheDir)
 
-	logrus.Infof("ReceiveTask", realURL)
+	logrus.Debugf("ReceiveTask", realURL)
 
-	//TODO: add id to a database?
-	if _, ok := params["id"]; ok {
+	if id, ok := params["id"]; ok {
 		//The real url may not be the test case format, could be only files
 		if strings.HasSuffix(realURL, ".tar.gz") {
 			liboct.UntarFile(realURL, strings.TrimSuffix(realURL, ".tar.gz"))
 		}
 		ret.Status = liboct.RetStatusOK
+		var task liboct.TestTask
+		task.ID = id
+		task.BundleURL = realURL
+		db.Update(liboct.DBTask, id, task)
 	} else {
 		ret.Status = "Failed"
 		ret.Message = "Cannot find the task id"
@@ -83,12 +91,15 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func RunCommand(action liboct.TestActionCommand, id string) bool {
-	dir := GetWorkingDir(id)
-	if pubConfig.Debug {
-		logrus.Infof("Run the command < ", action.Command, ">  in ", dir)
+	db := liboct.GetDefaultDB()
+	taskInterface, err := db.Get(liboct.DBTask, id)
+	if err != nil {
+		logrus.Warnf("Cannot find the test job " + id)
+		return false
 	}
-	//check it since some case only has a config.json
-	liboct.PreparePath(dir, "")
+	task, _ := liboct.TaskFromString(taskInterface.String())
+	workingDir := strings.TrimSuffix(task.BundleURL, ".tar.gz")
+	logrus.Debugf("Run the command < ", action.Command, ">  in ", workingDir)
 
 	if pubConfig.Class == "os" {
 		var sh string
@@ -104,38 +115,35 @@ func RunCommand(action liboct.TestActionCommand, id string) bool {
 			//TODO: remove the dir
 			return true
 		}
-		return liboct.ExecSH(sh, dir)
+		return liboct.ExecSH(sh, workingDir)
 	} else if pubConfig.Class == "container" {
 		var sh string
 		//For 'container', the 'dir' is the way to store test files and use 'id' to differentiate tasks
 		clientCommand := pubConfig.ContainerClient
 		switch liboct.TestAction(action.Action) {
 		case liboct.TestActionDeploy:
-			//TODO: mount to /test dir, add to spec!
-			sh = fmt.Sprintf("%s -v %s setID %s", clientCommand, dir, "/test", id)
+			return true
 		case liboct.TestActionRun:
-			sh = fmt.Sprintf("%s start %s", clientCommand, id)
+			//docker run  -w=/test -v /tmp/.OCT/1234/bundle:/test ubuntu sh exe.sh
+			//TODO: name is the container name, like busybox
+			sh = fmt.Sprintf("%s run -w=/octtest -v %s:/octtest  %s %s", clientCommand, workingDir, action.Name, action.Command)
 		case liboct.TestActionCollect:
 			return true
 		case liboct.TestActionDestroy:
-			sh = fmt.Sprintf("%s remove %s", clientCommand, id)
+			return true
 		}
 
-		return liboct.ExecSH(sh, dir)
+		logrus.Debugf(sh)
+		return liboct.ExecSH(sh, workingDir)
 	}
 
 	return false
 }
 
-//TODO: the working dir should be defined in the spec.
-func GetWorkingDir(id string) string {
-	return path.Join("/tmp/.octd_cache", id)
-}
-
 func PostTaskAction(w http.ResponseWriter, r *http.Request) {
 	var ret liboct.HttpRet
 	result, _ := ioutil.ReadAll(r.Body)
-	logrus.Infof("Post task action ", string(result))
+	logrus.Debugf("Post task action ", string(result))
 	r.Body.Close()
 	action, err := liboct.ActionCommandFromString(string(result))
 	if err != nil {
@@ -164,7 +172,7 @@ func RegisterToTestServer() {
 	//Using config now.
 
 	content := liboct.ReadFile("./host.conf")
-	logrus.Infof(content)
+	logrus.Debugf(content)
 	liboct.SendCommand(post_url, []byte(content))
 }
 
@@ -189,6 +197,10 @@ func init() {
 			return
 		}
 	}
+
+	db := liboct.GetDefaultDB()
+	db.RegistCollect(liboct.DBTask)
+
 	RegisterToTestServer()
 }
 

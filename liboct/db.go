@@ -135,16 +135,19 @@ func (db *DB) Add(collect DBCollectName, val DBInterface) (string, error) {
 	return id, nil
 }
 
+//If id exist,s modify it; if id does not exist, add it.
 func (db *DB) Update(collect DBCollectName, id string, val DBInterface) error {
 	if err := db.CollectExist(collect); err != nil {
 		return err
 	}
-	if _, ok := db.OCTDB[collect][id]; ok {
-		db.OCTDB[collect][id] = val
-		return nil
+
+	if len(id) == 0 {
+		return errors.New("Cannot update an empty id.")
 	}
 
-	return errors.New(fmt.Sprintf("Cannot find the %s in collect %s.", id, collect))
+	db.OCTDB[collect][id] = val
+
+	return nil
 }
 
 func (db *DB) Remove(collect DBCollectName, id string) error {
