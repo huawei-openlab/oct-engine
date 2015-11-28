@@ -170,7 +170,11 @@ func ReceiveFile(w http.ResponseWriter, r *http.Request, cacheURL string) (realU
 	if val, ok := params["id"]; ok {
 		realDir = PreparePath(path.Join(cacheURL, val), "")
 	} else {
-		realDir = PreparePath(cacheURL, "")
+		_, err := os.Stat(cacheURL)
+		if err != nil && !os.IsExist(err) {
+			os.MkdirAll(cacheURL, 0777)
+		}
+		realDir, _ = ioutil.TempDir(cacheURL, "oct-received-file-")
 	}
 	realURL = fmt.Sprintf("%s/%s", realDir, handler.Filename)
 	f, err := os.Create(realURL)
