@@ -109,6 +109,7 @@ func updateSchedulerBundle(id string, oldURL string) {
 	db := liboct.GetDefaultDB()
 	sInterface, _ := db.Get(liboct.DBScheduler, id)
 	s, _ := liboct.SchedulerFromString(sInterface.String())
+
 	dir := path.Dir(oldURL)
 	newURL := fmt.Sprintf("%s/%s", path.Join(dir, id), path.Base(oldURL))
 	liboct.PreparePath(path.Join(dir, id), "")
@@ -126,7 +127,6 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 	realURL, _ := liboct.ReceiveFile(w, r, liboct.SchedulerCacheDir)
 	tc, err := liboct.CaseFromTar(realURL, "")
 	if err != nil {
-		logrus.Warn(err)
 		liboct.RenderError(w, err)
 		return
 	}
@@ -139,11 +139,9 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 			updateSchedulerBundle(id, realURL)
 			liboct.RenderOK(w, id, nil)
 		} else {
-			logrus.Warn(e)
 			liboct.RenderError(w, e)
 		}
 	} else {
-		logrus.Warn(err)
 		liboct.RenderError(w, err)
 	}
 }
