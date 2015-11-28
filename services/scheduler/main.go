@@ -26,28 +26,19 @@ func GetTaskStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetTaskReport(w http.ResponseWriter, r *http.Request) {
-	var ret liboct.HttpRet
 	db := liboct.GetDefaultDB()
 	id := r.URL.Query().Get(":ID")
 	sInterface, err := db.Get(liboct.DBScheduler, id)
 	if err != nil {
-		logrus.Warn(err)
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = err.Error()
-		ret_string, _ := json.MarshalIndent(ret, "", "\t")
-		w.Write([]byte(ret_string))
+		liboct.RenderError(w, err)
 		return
 	}
 	s, _ := liboct.SchedulerFromString(sInterface.String())
 
 	//Send the collect command to the octd
 	if err := s.Command(liboct.TestActionCollect); err != nil {
-		logrus.Warn(err)
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = err.Error()
-		ret_string, _ := json.MarshalIndent(ret, "", "\t")
-		w.Write([]byte(ret_string))
 		db.Update(liboct.DBScheduler, id, s)
+		liboct.RenderError(w, err)
 		return
 	} else {
 		db.Update(liboct.DBScheduler, id, s)
@@ -69,30 +60,22 @@ func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 	file, err := os.Open(reportURL)
 	defer file.Close()
 	if err != nil {
-		logrus.Warn(err)
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = err.Error()
-		ret_string, _ := json.MarshalIndent(ret, "", "\t")
-		w.Write([]byte(ret_string))
+		liboct.RenderError(w, err)
 	} else {
 		buf := bytes.NewBufferString("")
 		buf.ReadFrom(file)
 
+		//Different write back, not json
 		w.Write([]byte(buf.String()))
 	}
 }
 
 func ReceiveTaskCommand(w http.ResponseWriter, r *http.Request) {
-	var ret liboct.HttpRet
 	db := liboct.GetDefaultDB()
 	id := r.URL.Query().Get(":ID")
 	sInterface, err := db.Get(liboct.DBScheduler, id)
 	if err != nil {
-		logrus.Warn(err)
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = err.Error()
-		ret_string, _ := json.MarshalIndent(ret, "", "\t")
-		w.Write([]byte(ret_string))
+		liboct.RenderError(w, err)
 		return
 	}
 	s, _ := liboct.SchedulerFromString(sInterface.String())
@@ -106,21 +89,17 @@ func ReceiveTaskCommand(w http.ResponseWriter, r *http.Request) {
 	*/
 	action, err := liboct.TestActionFromString(string(result))
 	if err != nil {
-		logrus.Warn(err)
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = err.Error()
-	} else {
-		if e := s.Command(action); e == nil {
-			ret.Status = liboct.RetStatusOK
-		} else {
-			ret.Status = liboct.RetStatusFailed
-			ret.Message = e.Error()
-		}
-		db.Update(liboct.DBScheduler, id, s)
+		liboct.RenderError(w, err)
+		return
 	}
 
-	ret_string, _ := json.MarshalIndent(ret, "", "\t")
-	w.Write([]byte(ret_string))
+	err = s.Command(action)
+	db.Update(liboct.DBScheduler, id, s)
+	if err != nil {
+		liboct.RenderError(w, err)
+	} else {
+		liboct.RenderOK(w, "", nil)
+	}
 }
 
 // Since the sheduler ID is got after receiving the test files
@@ -142,17 +121,13 @@ func updateSchedulerBundle(id string, oldURL string) {
 
 func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 	logrus.Debugf("ReceiveTask begin")
-	var ret liboct.HttpRet
 	var tc liboct.TestCase
 	db := liboct.GetDefaultDB()
 	realURL, _ := liboct.ReceiveFile(w, r, liboct.SchedulerCacheDir)
 	tc, err := liboct.CaseFromTar(realURL, "")
 	if err != nil {
 		logrus.Warn(err)
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = err.Error()
-		ret_string, _ := json.MarshalIndent(ret, "", "\t")
-		w.Write([]byte(ret_string))
+		liboct.RenderError(w, err)
 		return
 	}
 
@@ -162,21 +137,15 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		if id, e := db.Add(liboct.DBScheduler, s); e == nil {
 			updateSchedulerBundle(id, realURL)
-			ret.Status = liboct.RetStatusOK
-			ret.Message = id
+			liboct.RenderOK(w, id, nil)
 		} else {
-			logrus.Warn(err)
-			ret.Status = liboct.RetStatusFailed
-			ret.Message = e.Error()
+			logrus.Warn(e)
+			liboct.RenderError(w, e)
 		}
 	} else {
 		logrus.Warn(err)
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = err.Error()
+		liboct.RenderError(w, err)
 	}
-	ret_string, _ := json.MarshalIndent(ret, "", "\t")
-	w.Write([]byte(ret_string))
-	return
 }
 
 // Will use DB in the future, (mongodb for example)

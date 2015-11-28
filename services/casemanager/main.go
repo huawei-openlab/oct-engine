@@ -59,12 +59,7 @@ func init() {
 
 //TODO: is there any usefull Restful help document lib?
 func GetHelp(w http.ResponseWriter, r *http.Request) {
-	var ret liboct.HttpRet
-	ret.Status = "OK"
-	ret.Message = fmt.Sprintf("The following APIs are supported.")
-	ret.Data = "case, repo and task"
-	retInfo, _ := json.MarshalIndent(ret, "", "\t")
-	w.Write([]byte(retInfo))
+	liboct.RenderOK(w, fmt.Sprintf("The following APIs are supported."), "case, repo and task")
 }
 
 func main() {

@@ -18,19 +18,6 @@ import (
 	"github.com/Sirupsen/logrus"
 )
 
-type RetStatus string
-
-const (
-	RetStatusOK     RetStatus = "ok"
-	RetStatusFailed RetStatus = "failed"
-)
-
-type HttpRet struct {
-	Status  RetStatus
-	Message string
-	Data    interface{}
-}
-
 //When filename is null, we just want to prepare a pure directory
 func PreparePath(cachename string, filename string) (dir string) {
 	if filename == "" {

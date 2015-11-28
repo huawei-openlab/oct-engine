@@ -85,6 +85,7 @@ func (task *TestTask) Apply() error {
 		logrus.Debugf("apply return : ", task, ret.Message)
 		return nil
 	} else {
+		logrus.Warnf("apply return : ", task, ret.Message)
 		task.Status = TestStatusAllocateFailed
 	}
 	return errors.New("Failed to apply.")

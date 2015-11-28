@@ -2,7 +2,6 @@ package main
 
 import (
 	"../../liboct"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -12,7 +11,6 @@ import (
 )
 
 func AddTask(w http.ResponseWriter, r *http.Request) {
-	var ret liboct.HttpRet
 	result, _ := ioutil.ReadAll(r.Body)
 	r.Body.Close()
 
@@ -20,58 +18,38 @@ func AddTask(w http.ResponseWriter, r *http.Request) {
 	caseID := string(result)
 	caseInterface, err := db.Get(liboct.DBCase, caseID)
 	if err != nil {
-		logrus.Warn(err)
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = err.Error()
-		retInfo, _ := json.MarshalIndent(ret, "", "\t")
-		w.Write([]byte(retInfo))
+		liboct.RenderError(w, err)
 		return
 	}
 	tc, _ := liboct.CaseFromString(caseInterface.String())
 
 	bundleURL := tc.GetBundleTarURL()
 	postURL := pubConfig.SchedulerURL
-	if task, err := liboct.TestTaskNew(postURL, bundleURL, liboct.SchedulerDefaultPrio); err == nil {
-		logrus.Warn(err)
-		id, _ := db.Add(liboct.DBTask, task)
-		ret.Status = liboct.RetStatusOK
-		ret.Message = id
+	if task, err := liboct.TestTaskNew(postURL, bundleURL, liboct.SchedulerDefaultPrio); err != nil {
+		liboct.RenderError(w, err)
 	} else {
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = err.Error()
+		id, _ := db.Add(liboct.DBTask, task)
+		liboct.RenderOK(w, id, nil)
 	}
-	retInfo, _ := json.MarshalIndent(ret, "", "\t")
-	w.Write([]byte(retInfo))
 }
 
 func GetTaskStatus(w http.ResponseWriter, r *http.Request) {
-	var ret liboct.HttpRet
 	db := liboct.GetDefaultDB()
 	id := r.URL.Query().Get(":TaskID")
-	if taskInterface, err := db.Get(liboct.DBTask, id); err == nil {
-		logrus.Warn(err)
-		ret.Status = liboct.RetStatusOK
-		ret.Data = taskInterface
+	if taskInterface, err := db.Get(liboct.DBTask, id); err != nil {
+		liboct.RenderError(w, err)
 	} else {
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = "Cannot find the task, wrong ID provided"
+		liboct.RenderOK(w, "", taskInterface)
 	}
-	retInfo, _ := json.MarshalIndent(ret, "", "\t")
-	w.Write([]byte(retInfo))
 }
 
 // redirect to local to test
 func GetTaskReport(w http.ResponseWriter, r *http.Request) {
-	var ret liboct.HttpRet
 	db := liboct.GetDefaultDB()
 	id := r.URL.Query().Get(":TaskID")
 	taskInterface, err := db.Get(liboct.DBTask, id)
 	if err != nil {
-		logrus.Warn(err)
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = "Cannot find the task, wrong ID provided"
-		retInfo, _ := json.MarshalIndent(ret, "", "\t")
-		w.Write([]byte(retInfo))
+		liboct.RenderError(w, err)
 		return
 	}
 
@@ -81,21 +59,13 @@ func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 	logrus.Debugf("Get url ", getURL)
 	resp, err := http.Get(getURL)
 	if err != nil {
-		logrus.Warn(err)
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = "Cannot find get the report by the url"
-		retInfo, _ := json.MarshalIndent(ret, "", "\t")
-		w.Write([]byte(retInfo))
+		liboct.RenderError(w, err)
 		return
 	}
 	defer resp.Body.Close()
 	resp_body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		logrus.Warn(err)
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = "Cannot find read the report by the url"
-		retInfo, _ := json.MarshalIndent(ret, "", "\t")
-		w.Write([]byte(retInfo))
+		liboct.RenderError(w, err)
 		return
 	}
 
@@ -103,39 +73,27 @@ func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostTaskAction(w http.ResponseWriter, r *http.Request) {
-	var ret liboct.HttpRet
 	db := liboct.GetDefaultDB()
 	result, _ := ioutil.ReadAll(r.Body)
 	r.Body.Close()
 	action, err := liboct.TestActionFromString(string(result))
 	if err != nil {
-		logrus.Warn(err)
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = err.Error()
-		retInfo, _ := json.MarshalIndent(ret, "", "\t")
-		w.Write([]byte(retInfo))
+		liboct.RenderError(w, err)
 		return
 	}
 	id := r.URL.Query().Get(":TaskID")
 	taskInterface, err := db.Get(liboct.DBTask, id)
 	if err != nil {
-		logrus.Warn(err)
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = err.Error()
-		retInfo, _ := json.MarshalIndent(ret, "", "\t")
-		w.Write([]byte(retInfo))
+		liboct.RenderError(w, err)
 		return
 	}
 
 	task, _ := liboct.TaskFromString(taskInterface.String())
-	if e := task.Command(action); e == nil {
-		ret.Status = liboct.RetStatusOK
+	if e := task.Command(action); e != nil {
+		liboct.RenderError(w, err)
 	} else {
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = e.Error()
+		liboct.RenderOK(w, "", nil)
 	}
-	retInfo, _ := json.MarshalIndent(ret, "", "\t")
-	w.Write([]byte(retInfo))
 }
 
 func ListTasks(w http.ResponseWriter, r *http.Request) {
@@ -160,10 +118,5 @@ func ListTasks(w http.ResponseWriter, r *http.Request) {
 		task, _ := db.Get(liboct.DBTask, ids[index])
 		tl = append(tl, task)
 	}
-	var ret liboct.HttpRet
-	ret.Status = liboct.RetStatusOK
-	ret.Message = fmt.Sprintf("%d tasks founded", len(tl))
-	ret.Data = tl
-	retInfo, _ := json.MarshalIndent(ret, "", "\t")
-	w.Write([]byte(retInfo))
+	liboct.RenderOK(w, fmt.Sprintf("%d tasks founded", len(tl)), tl)
 }

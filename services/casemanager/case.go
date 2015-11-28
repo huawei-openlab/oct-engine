@@ -7,8 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
-
-	"github.com/Sirupsen/logrus"
 )
 
 func ListRepos(w http.ResponseWriter, r *http.Request) {
@@ -32,32 +30,20 @@ func ListRepos(w http.ResponseWriter, r *http.Request) {
 		rl = append(rl, repo)
 	}
 
-	var ret liboct.HttpRet
-	ret.Status = liboct.RetStatusOK
-	ret.Message = fmt.Sprintf("%d repos founded", len(rl))
-	ret.Data = rl
-	retInfo, _ := json.MarshalIndent(ret, "", "\t")
-	w.Write([]byte(retInfo))
+	liboct.RenderOK(w, fmt.Sprintf("%d repos founded", len(rl)), rl)
 }
 
 func GetRepo(w http.ResponseWriter, r *http.Request) {
-	var ret liboct.HttpRet
 	id := r.URL.Query().Get(":ID")
 	db := liboct.GetDefaultDB()
-	if repo, err := db.Get(liboct.DBRepo, id); err == nil {
-		ret.Status = liboct.RetStatusOK
-		ret.Data = repo
+	if repo, err := db.Get(liboct.DBRepo, id); err != nil {
+		liboct.RenderError(w, err)
 	} else {
-
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = err.Error()
+		liboct.RenderOK(w, "", repo)
 	}
-	retInfo, _ := json.MarshalIndent(ret, "", "\t")
-	w.Write([]byte(retInfo))
 }
 
 func AddRepo(w http.ResponseWriter, r *http.Request) {
-	var ret liboct.HttpRet
 	action := r.URL.Query().Get("Action")
 	db := liboct.GetDefaultDB()
 	//Add and refresh
@@ -67,22 +53,17 @@ func AddRepo(w http.ResponseWriter, r *http.Request) {
 		r.Body.Close()
 		err := json.Unmarshal([]byte(result), &repo)
 		if err != nil {
-			logrus.Info(err)
-			ret.Status = liboct.RetStatusFailed
-			ret.Message = fmt.Sprintf("The repo is invalid.")
+			liboct.RenderError(w, err)
 		} else {
 			if err := repo.IsValid(); err == nil {
-				if id, e := db.Add(liboct.DBRepo, repo); e == nil {
-					ret.Status = liboct.RetStatusOK
-					RefreshRepo(id)
+				if id, e := db.Add(liboct.DBRepo, repo); e != nil {
+					liboct.RenderError(w, err)
 				} else {
-					ret.Status = liboct.RetStatusFailed
-					ret.Message = e.Error()
+					RefreshRepo(id)
+					liboct.RenderOK(w, "", nil)
 				}
 			} else {
-				logrus.Info(err)
-				ret.Status = liboct.RetStatusFailed
-				ret.Message = err.Error()
+				liboct.RenderError(w, err)
 			}
 		}
 	} else if action == "Refresh" {
@@ -90,57 +71,41 @@ func AddRepo(w http.ResponseWriter, r *http.Request) {
 		for index := 0; index < len(ids); index++ {
 			RefreshRepo(ids[index])
 		}
-		ret.Status = liboct.RetStatusOK
+		liboct.RenderOK(w, "", nil)
 	} else {
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = "The action in AddRepo is limited to Add/Refresh"
+		liboct.RenderErrorf(w, "The action in AddRepo is limited to Add/Refresh")
 	}
-
-	retInfo, _ := json.MarshalIndent(ret, "", "\t")
-	w.Write([]byte(retInfo))
 }
 
 func ModifyRepo(w http.ResponseWriter, r *http.Request) {
-	var ret liboct.HttpRet
 	repoID := r.URL.Query().Get(":ID")
 	action := r.URL.Query().Get("Action")
 	db := liboct.GetDefaultDB()
 	val, err := db.Get(liboct.DBRepo, repoID)
 	if err != nil {
-		logrus.Warn(err)
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = fmt.Sprintf("The repo %s is not exist.", repoID)
-		retInfo, _ := json.MarshalIndent(ret, "", "\t")
-		w.Write([]byte(retInfo))
+		liboct.RenderError(w, err)
 		return
 	}
 	if action == "Modify" {
-		//FIXME: The ID should not be changed.
 		var newRepo liboct.TestCaseRepo
 		result, _ := ioutil.ReadAll(r.Body)
 		r.Body.Close()
 		err := json.Unmarshal([]byte(result), &newRepo)
 		if err != nil {
-			logrus.Warn(err)
-			ret.Status = liboct.RetStatusFailed
-			ret.Message = fmt.Sprintf("The modified information is invalid.")
+			liboct.RenderError(w, err)
 		} else {
 			oldRepo, _ := liboct.RepoFromString(val.String())
 			oldRepo.Modify(newRepo)
 			db.Update(liboct.DBRepo, repoID, oldRepo)
 			RefreshRepo(repoID)
-			ret.Status = liboct.RetStatusOK
+			liboct.RenderOK(w, "", nil)
 		}
 	} else if action == "Refresh" {
 		RefreshRepo(repoID)
-		ret.Status = liboct.RetStatusOK
+		liboct.RenderOK(w, "", nil)
 	} else {
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = "The action in ModifyRepo is limited to Add/Refresh"
+		liboct.RenderErrorf(w, "The action in ModifyRepo is limited to Add/Refresh")
 	}
-
-	retInfo, _ := json.MarshalIndent(ret, "", "\t")
-	w.Write([]byte(retInfo))
 }
 
 func CleanRepo(repo liboct.TestCaseRepo) {
@@ -173,16 +138,12 @@ func RefreshRepo(id string) {
 }
 
 func RefreshRepos(w http.ResponseWriter, r *http.Request) {
-	var ret liboct.HttpRet
-
 	db := liboct.GetDefaultDB()
 	ids := db.Lookup(liboct.DBRepo, liboct.DBQuery{})
 	for index := 0; index < len(ids); index++ {
 		RefreshRepo(ids[index])
 	}
-	ret.Status = liboct.RetStatusOK
-	retInfo, _ := json.MarshalIndent(ret, "", "\t")
-	w.Write([]byte(retInfo))
+	liboct.RenderOK(w, "", nil)
 }
 
 func ListCases(w http.ResponseWriter, r *http.Request) {
@@ -215,51 +176,39 @@ func ListCases(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var ret liboct.HttpRet
-	ret.Status = liboct.RetStatusOK
-	ret.Message = fmt.Sprintf("%d cases founded", len(caseList))
-	ret.Data = caseList
-
-	retInfo, _ := json.MarshalIndent(ret, "", "\t")
-	w.Write([]byte(retInfo))
+	liboct.RenderOK(w, fmt.Sprintf("%d cases founded", len(caseList)), caseList)
 }
 
 func GetCase(w http.ResponseWriter, r *http.Request) {
 	//TODO: support another query method : repo/group/name
 	db := liboct.GetDefaultDB()
 	id := r.URL.Query().Get(":ID")
-	if val, err := db.Get(liboct.DBCase, id); err == nil {
+	if val, err := db.Get(liboct.DBCase, id); err != nil {
+		liboct.RenderError(w, err)
+	} else {
 		tc, _ := liboct.CaseFromString(val.String())
 		value := tc.GetBundleContent()
 
 		if len(value) > 0 {
-			//FIXME: add the error to head
 			w.Write([]byte(value))
-			return
+		} else {
+			liboct.RenderErrorf(w, "Case is empty.")
 		}
 	}
-	w.WriteHeader(404)
-	w.Write([]byte("Cannot get the case."))
 }
 
 func GetCaseReport(w http.ResponseWriter, r *http.Request) {
-	var ret liboct.HttpRet
 	db := liboct.GetDefaultDB()
 	id := r.URL.Query().Get(":ID")
-	if val, err := db.Get(liboct.DBCase, id); err == nil {
+	if val, err := db.Get(liboct.DBCase, id); err != nil {
+		liboct.RenderError(w, err)
+	} else {
 		tc, _ := liboct.CaseFromString(val.String())
 		content := tc.GetReportContent()
 		if len(content) > 0 {
-			ret.Status = liboct.RetStatusOK
-			ret.Data = content
-			retInfo, _ := json.MarshalIndent(ret, "", "\t")
-			w.Write([]byte(retInfo))
-			return
+			liboct.RenderOK(w, "", content)
+		} else {
+			liboct.RenderErrorf(w, "Case report is empty.")
 		}
 	}
-	ret.Status = liboct.RetStatusFailed
-	ret.Message = "Cannot find the report"
-
-	retInfo, _ := json.MarshalIndent(ret, "", "\t")
-	w.Write([]byte(retInfo))
 }

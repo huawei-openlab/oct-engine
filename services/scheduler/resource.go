@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+
+	"github.com/Sirupsen/logrus"
 )
 
 func GetResourceQuery(r *http.Request) liboct.DBQuery {
@@ -43,69 +45,48 @@ func GetResource(w http.ResponseWriter, r *http.Request) {
 	db := liboct.GetDefaultDB()
 	ids := db.Lookup(liboct.DBResource, query)
 
-	var ret liboct.HttpRet
 	if len(ids) == 0 {
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = "Cannot find the avaliable resource"
+		liboct.RenderErrorf(w, "Cannot find the avaliable resource")
 	} else {
-		ret.Status = liboct.RetStatusOK
-		ret.Message = "Find the avaliable resource"
 		var rss []liboct.DBInterface
 		for index := 0; index < len(ids); index++ {
 			res, _ := db.Get(liboct.DBResource, ids[index])
 			rss = append(rss, res)
 		}
-
-		ret.Data = rss
+		liboct.RenderOK(w, "Find the avaliable resource", rss)
 	}
-
-	body, _ := json.MarshalIndent(ret, "", "\t")
-	w.Write([]byte(body))
 }
 
 func PostResource(w http.ResponseWriter, r *http.Request) {
 	var res liboct.Resource
-	var ret liboct.HttpRet
 	db := liboct.GetDefaultDB()
 	result, _ := ioutil.ReadAll(r.Body)
 	r.Body.Close()
-	if pubConfig.Debug {
-		fmt.Println(string(result))
-	}
+	logrus.Debugf(string(result))
 	json.Unmarshal([]byte(result), &res)
 	if err := res.IsValid(); err != nil {
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = err.Error()
+		liboct.RenderError(w, err)
 	} else {
 		lock.Lock()
-		if id, e := db.Add(liboct.DBResource, res); e == nil {
-			ret.Status = "OK"
-			ret.Message = fmt.Sprintf("Success in adding the resource: %s ", id)
+		if id, err := db.Add(liboct.DBResource, res); err != nil {
+			liboct.RenderError(w, err)
 		} else {
-			ret.Status = liboct.RetStatusFailed
-			ret.Message = e.Error()
+			liboct.RenderOK(w, fmt.Sprintf("Success in adding the resource: %s ", id), nil)
 		}
 		lock.Unlock()
 	}
-	ret_body, _ := json.MarshalIndent(ret, "", "\t")
-	w.Write([]byte(ret_body))
 }
 
 func DeleteResource(w http.ResponseWriter, r *http.Request) {
-	var ret liboct.HttpRet
 	db := liboct.GetDefaultDB()
 	id := r.URL.Query().Get("ID")
 	lock.Lock()
-	if err := db.Remove(liboct.DBResource, id); err == nil {
-		ret.Status = liboct.RetStatusOK
-		ret.Message = "Success in remove the resource"
+	if err := db.Remove(liboct.DBResource, id); err != nil {
+		liboct.RenderError(w, err)
 	} else {
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = err.Error()
+		liboct.RenderOK(w, "Success in remove the resource", nil)
 	}
 	lock.Unlock()
-	ret_body, _ := json.MarshalIndent(ret, "", "\t")
-	w.Write([]byte(ret_body))
 }
 
 var lock = sync.RWMutex{}

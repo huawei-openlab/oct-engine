@@ -64,7 +64,6 @@ func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 }
 
 func ReceiveTask(w http.ResponseWriter, r *http.Request) {
-	var ret liboct.HttpRet
 	db := liboct.GetDefaultDB()
 	realURL, params := liboct.ReceiveFile(w, r, OCTDCacheDir)
 
@@ -75,19 +74,15 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(realURL, ".tar.gz") {
 			liboct.UntarFile(realURL, strings.TrimSuffix(realURL, ".tar.gz"))
 		}
-		ret.Status = liboct.RetStatusOK
 		var task liboct.TestTask
 		task.ID = id
 		task.BundleURL = realURL
 		db.Update(liboct.DBTask, id, task)
-	} else {
-		ret.Status = "Failed"
-		ret.Message = "Cannot find the task id"
-	}
 
-	ret_string, _ := json.Marshal(ret)
-	w.Write([]byte(ret_string))
-	return
+		liboct.RenderOK(w, "", nil)
+	} else {
+		liboct.RenderErrorf(w, fmt.Sprintf("Cannot find the task id: %d", id))
+	}
 }
 
 func RunCommand(action liboct.TestActionCommand, id string) bool {
@@ -142,28 +137,22 @@ func RunCommand(action liboct.TestActionCommand, id string) bool {
 }
 
 func PostTaskAction(w http.ResponseWriter, r *http.Request) {
-	var ret liboct.HttpRet
 	result, _ := ioutil.ReadAll(r.Body)
 	logrus.Debugf("Post task action ", string(result))
 	r.Body.Close()
 	action, err := liboct.ActionCommandFromString(string(result))
 	if err != nil {
-		ret.Status = liboct.RetStatusFailed
-		ret.Message = "Invalid action command"
-		retInfo, _ := json.MarshalIndent(ret, "", "\t")
-		w.Write([]byte(retInfo))
+		liboct.RenderError(w, err)
 		return
 	}
 
 	id := r.URL.Query().Get(":ID")
 
 	if RunCommand(action, id) {
-		ret.Status = liboct.RetStatusOK
+		liboct.RenderOK(w, "", nil)
 	} else {
-		ret.Status = liboct.RetStatusFailed
+		liboct.RenderErrorf(w, fmt.Sprintf("Failed in run command: %s", string(result)))
 	}
-	ret_string, _ := json.Marshal(ret)
-	w.Write([]byte(ret_string))
 }
 
 func RegisterToTestServer() {
@@ -205,6 +194,25 @@ func init() {
 	RegisterToTestServer()
 }
 
+func GetClair(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get(":ID")
+	realURL := path.Join("/tmp/", id)
+
+	file, err := os.Open(realURL)
+	defer file.Close()
+	if err != nil {
+		logrus.Warnf("Cannot file the " + realURL)
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("Cannot open the file: " + realURL))
+		return
+	}
+
+	buf := bytes.NewBufferString("")
+	buf.ReadFrom(file)
+
+	w.Write([]byte(buf.String()))
+}
+
 func main() {
 	var port string
 	port = fmt.Sprintf(":%d", pubConfig.Port)
@@ -214,6 +222,7 @@ func main() {
 	mux.Post("/task/:ID", PostTaskAction)
 	mux.Get("/task/:ID/report", GetTaskReport)
 
+	mux.Get("/:ID", GetClair)
 	http.Handle("/", mux)
 	logrus.Infof("Start to listen ", port)
 	err := http.ListenAndServe(port, nil)
