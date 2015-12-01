@@ -46,7 +46,7 @@ func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 
 	//Tar the reports in the cacheDir
 	reportURL := path.Join(liboct.SchedulerCacheDir, s.ID, "reports.tar.gz")
-	logrus.Debugf("Get reportURL ", reportURL)
+	logrus.Debugf("Get reportURL %s", reportURL)
 	_, err = os.Stat(reportURL)
 	if err != nil {
 		logrus.Warn(err)
@@ -81,7 +81,7 @@ func ReceiveTaskCommand(w http.ResponseWriter, r *http.Request) {
 	s, _ := liboct.SchedulerFromString(sInterface.String())
 
 	result, _ := ioutil.ReadAll(r.Body)
-	logrus.Debugf("Receive task Command ", string(result))
+	logrus.Debugf("Receive task Command %s", string(result))
 	r.Body.Close()
 	/* Donnot use this now FIXME
 	var cmd liboct.TestActionCommand
@@ -110,9 +110,10 @@ func updateSchedulerBundle(id string, oldURL string) {
 	sInterface, _ := db.Get(liboct.DBScheduler, id)
 	s, _ := liboct.SchedulerFromString(sInterface.String())
 
-	dir := path.Dir(oldURL)
+	dir := path.Dir(path.Dir(oldURL))
 	newURL := fmt.Sprintf("%s/%s", path.Join(dir, id), path.Base(oldURL))
 	liboct.PreparePath(path.Join(dir, id), "")
+	logrus.Debugf("Old URL %s, New URL %s", oldURL, newURL)
 	os.Rename(strings.TrimSuffix(oldURL, ".tar.gz"), strings.TrimSuffix(newURL, ".tar.gz"))
 	os.Rename(oldURL, newURL)
 	//bundleURL is the directory of the bundle

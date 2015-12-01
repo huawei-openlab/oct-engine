@@ -39,7 +39,7 @@ func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 	db := liboct.GetDefaultDB()
 	taskInterface, err := db.Get(liboct.DBTask, id)
 	if err != nil {
-		logrus.Warnf("Cannot find the test job " + id)
+		logrus.Warnf("Cannot find the test job %v", id)
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("Cannot find the test job " + id))
 		return
@@ -51,7 +51,7 @@ func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 	file, err := os.Open(realURL)
 	defer file.Close()
 	if err != nil {
-		logrus.Warnf("Cannot file the " + filename)
+		logrus.Warnf("Cannot open the file %v", filename)
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("Cannot open the file: " + realURL))
 		return
@@ -67,7 +67,7 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 	db := liboct.GetDefaultDB()
 	realURL, params := liboct.ReceiveFile(w, r, OCTDCacheDir)
 
-	logrus.Debugf("ReceiveTask", realURL)
+	logrus.Debugf("ReceiveTask %v", realURL)
 
 	if id, ok := params["id"]; ok {
 		//The real url may not be the test case format, could be only files
@@ -89,12 +89,12 @@ func RunCommand(action liboct.TestActionCommand, id string) bool {
 	db := liboct.GetDefaultDB()
 	taskInterface, err := db.Get(liboct.DBTask, id)
 	if err != nil {
-		logrus.Warnf("Cannot find the test job " + id)
+		logrus.Warnf("Cannot find the test job %v", id)
 		return false
 	}
 	task, _ := liboct.TaskFromString(taskInterface.String())
 	workingDir := strings.TrimSuffix(task.BundleURL, ".tar.gz")
-	logrus.Debugf("Run the command < ", action.Command, ">  in ", workingDir)
+	logrus.Debugf("Run the command <%v> in %v ", action.Command, workingDir)
 
 	if pubConfig.Class == "os" {
 		var sh string
@@ -138,7 +138,7 @@ func RunCommand(action liboct.TestActionCommand, id string) bool {
 
 func PostTaskAction(w http.ResponseWriter, r *http.Request) {
 	result, _ := ioutil.ReadAll(r.Body)
-	logrus.Debugf("Post task action ", string(result))
+	logrus.Debugf("Post task action %v", string(result))
 	r.Body.Close()
 	action, err := liboct.ActionCommandFromString(string(result))
 	if err != nil {
@@ -188,6 +188,10 @@ func init() {
 		}
 	}
 
+	if pubConfig.Debug {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
+
 	db := liboct.GetDefaultDB()
 	db.RegistCollect(liboct.DBTask)
 
@@ -201,7 +205,7 @@ func GetClair(w http.ResponseWriter, r *http.Request) {
 	file, err := os.Open(realURL)
 	defer file.Close()
 	if err != nil {
-		logrus.Warnf("Cannot file the " + realURL)
+		logrus.Warnf("Cannot file the %v", realURL)
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("Cannot open the file: " + realURL))
 		return
@@ -224,7 +228,7 @@ func main() {
 
 	mux.Get("/:ID", GetClair)
 	http.Handle("/", mux)
-	logrus.Infof("Start to listen ", port)
+	logrus.Infof("Start to listen %v", port)
 	err := http.ListenAndServe(port, nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)

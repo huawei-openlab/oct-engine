@@ -16,11 +16,14 @@ package main
 
 import (
 	"../../../liboct"
+	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path"
 	"strings"
+	//	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
@@ -85,6 +88,7 @@ func RunTest(casePath string, sAddr string) {
 			os.MkdirAll(TestCache, 0777)
 		}
 		caseBundle, _ = ioutil.TempDir(TestCache, "oct-")
+		defer os.RemoveAll(caseBundle)
 		if strings.HasSuffix(casePath, ".json") {
 			copy(path.Join(caseBundle, "case.json"), casePath)
 		} else if strings.HasSuffix(casePath, ".tar.gz") {
@@ -99,8 +103,60 @@ func RunTest(casePath string, sAddr string) {
 	if _, err := liboct.CaseFromBundle(caseBundle); err != nil {
 		logrus.Fatal(err)
 	}
+	if len(caseTar) == 0 {
+		caseTar = liboct.TarDir(caseBundle)
+		defer os.Remove(caseTar)
+	}
 
-	logrus.Debugf("Bundle %s, tar %s", caseBundle, caseTar)
+	logrus.Debugf("Bundle %s, tar %s, sending to %s", caseBundle, caseTar, sAddr)
+
+	params := make(map[string]string)
+	//params["id"] = liboct.MD5(fmt.Sprintf("%d", time.Now().Unix()))
+
+	postURL := fmt.Sprintf("%s/task", sAddr)
+	ret := liboct.SendFile(postURL, caseTar, params)
+	if ret.Status != liboct.RetStatusOK {
+		logrus.Warnf("Failed to apply run task %v", ret)
+		return
+	} else {
+		logrus.Debugf("Success in apply run task %v", ret)
+	}
+
+	taskID := ret.Message
+	postURL = fmt.Sprintf("%s/task/%s", sAddr, taskID)
+	ret = liboct.SendCommand(postURL, []byte("deploy"))
+	if ret.Status != liboct.RetStatusOK {
+		logrus.Warnf("Failed to deploy task %v", ret)
+		return
+	} else {
+		logrus.Debugf("Success in deploy task %v", ret)
+	}
+
+	ret = liboct.SendCommand(postURL, []byte("run"))
+	if ret.Status != liboct.RetStatusOK {
+		logrus.Warnf("Failed to run task %v", ret)
+		return
+	} else {
+		logrus.Debugf("Success in run task %v", ret)
+	}
+
+	getURL := fmt.Sprintf("%s/task/%s/report", sAddr, taskID)
+	resp, err := http.Get(getURL)
+	if err != nil {
+		logrus.Warnf("Failed to get report")
+		return
+	}
+	defer resp.Body.Close()
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		logrus.Warnf("The report is empty")
+		return
+	}
+
+	reportTar := fmt.Sprintf("%s/%s-report.tar.gz", TestCache, taskID)
+	ioutil.WriteFile(reportTar, respBody, 0644)
+
+	logrus.Infof("The report generated here:\n%v", reportTar)
 }
 
 func QueryTest(ID string, sAddr string) {
