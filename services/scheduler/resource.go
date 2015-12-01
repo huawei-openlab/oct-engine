@@ -1,7 +1,6 @@
 package main
 
 import (
-	"../../liboct"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -10,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/huawei-openlab/oct-engine/liboct"
 )
 
 func GetResourceQuery(r *http.Request) liboct.DBQuery {

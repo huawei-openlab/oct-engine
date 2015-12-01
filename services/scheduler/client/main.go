@@ -15,7 +15,6 @@
 package main
 
 import (
-	"../../../liboct"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -23,10 +22,10 @@ import (
 	"os"
 	"path"
 	"strings"
-	//	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
+	"github.com/huawei-openlab/oct-engine/liboct"
 )
 
 const TestCache = "testCache"

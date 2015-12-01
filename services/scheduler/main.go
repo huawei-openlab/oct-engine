@@ -1,7 +1,6 @@
 package main
 
 import (
-	"../../liboct"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/drone/routes"
+	"github.com/huawei-openlab/oct-engine/liboct"
 )
 
 type SchedulerConfig struct {

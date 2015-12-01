@@ -1,7 +1,6 @@
 package main
 
 import (
-	"../../liboct"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/drone/routes"
+	"github.com/huawei-openlab/oct-engine/liboct"
 )
 
 type CaseManagerConf struct {

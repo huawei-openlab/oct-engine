@@ -1,12 +1,13 @@
 package main
 
 import (
-	"../../liboct"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
+
+	"github.com/huawei-openlab/oct-engine/liboct"
 )
 
 func ListRepos(w http.ResponseWriter, r *http.Request) {

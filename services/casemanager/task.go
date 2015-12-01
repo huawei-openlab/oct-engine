@@ -1,13 +1,13 @@
 package main
 
 import (
-	"../../liboct"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/huawei-openlab/oct-engine/liboct"
 )
 
 func AddTask(w http.ResponseWriter, r *http.Request) {
