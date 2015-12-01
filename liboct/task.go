@@ -75,17 +75,17 @@ func (task *TestTask) Apply() error {
 
 	postURL := fmt.Sprintf("%s/task", task.PostURL)
 
-	logrus.Debugf("apply task: ", postURL, task.BundleURL)
+	logrus.Debugf("apply task: %v %v", postURL, task.BundleURL)
 
 	ret := SendFile(postURL, task.BundleURL, params)
 	if ret.Status == RetStatusOK {
 		task.SetSchedulerID(ret.Message)
 		task.PostURL = fmt.Sprintf("%s/task/%s", task.PostURL, task.GetSchedulerID())
 		task.Status = TestStatusAllocated
-		logrus.Debugf("apply return : ", task, ret.Message)
+		logrus.Debugf("apply return : %v %v", task, ret.Message)
 		return nil
 	} else {
-		logrus.Warnf("apply return : ", task, ret.Message)
+		logrus.Warnf("apply return : %v %v ", task, ret.Message)
 		task.Status = TestStatusAllocateFailed
 	}
 	return errors.New("Failed to apply.")
@@ -98,7 +98,7 @@ func (task *TestTask) Deploy() error {
 	}
 	task.Status = TestStatusDeploying
 	ret := SendCommand(task.PostURL, []byte(TestActionDeploy))
-	logrus.Debugf("Deploy : ", task.PostURL, ret)
+	logrus.Debugf("Deploy : %v %v", task.PostURL, ret)
 	if ret.Status == RetStatusOK {
 		task.Status = TestStatusDeployed
 		return nil
@@ -114,7 +114,7 @@ func (task *TestTask) Run() error {
 	}
 	task.Status = TestStatusRunning
 	ret := SendCommand(task.PostURL, []byte(TestActionRun))
-	logrus.Debugf("Run ", ret)
+	logrus.Debugf("Run %v", ret)
 	if ret.Status == RetStatusOK {
 		task.Status = TestStatusRun
 		return nil
@@ -130,7 +130,7 @@ func (task *TestTask) Collect() error {
 	}
 	task.Status = TestStatusCollecting
 	ret := SendCommand(task.PostURL, []byte(TestActionCollect))
-	logrus.Debugf("Collect ", ret)
+	logrus.Debugf("Collect %v", ret)
 	if ret.Status == RetStatusOK {
 		task.Status = TestStatusCollected
 		return nil
@@ -167,7 +167,7 @@ func (task *TestTask) Command(action TestAction) (err error) {
 	default:
 		return errors.New(fmt.Sprintf("The action %s is not supported.", action))
 	}
-	logrus.Debugf("Command ", action, "  Update  ", task)
+	logrus.Debugf("Command %v Update %v", action, task)
 	db := GetDefaultDB()
 	db.Update(DBTask, task.ID, task)
 	return nil

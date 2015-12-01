@@ -78,6 +78,7 @@ func main() {
 	mux.Get("/case/:ID", GetCase)
 	mux.Get("/case/:ID/report", GetCaseReport)
 
+	//The task api is not necessary now, just used for web in the future.
 	//Add a new task by the case id
 	mux.Get("/task", ListTasks)
 	//Add task : turn a case into a task, but donnot send to scheduler

@@ -49,7 +49,7 @@ const (
 )
 
 func TestActionFromString(val string) (TestAction, error) {
-	logrus.Debugf("test action get ", val)
+	logrus.Debugf("test action get %v", val)
 	switch val {
 	case "apply":
 		return TestActionApply, nil
@@ -190,7 +190,7 @@ func (t *TestUnit) GetStatus() TestStatus {
 
 func (t *TestUnit) Apply() error {
 	if t.Status != TestStatusInit && t.Status != TestStatusAllocateFailed {
-		logrus.Debugf("Cannot apply the test resource when the current status is :%s.", t.Status)
+		logrus.Debugf("Cannot apply the test resource when the current status is :%v.", t.Status)
 		return errors.New(fmt.Sprintf("Cannot apply the test resource when the current status is :%s.", t.Status))
 	}
 	t.Status = TestStatusAllocating
@@ -227,7 +227,7 @@ func (t *TestUnit) Deploy() error {
 	deployURL := fmt.Sprintf("%s/task", res.URL)
 	params := make(map[string]string)
 	params["id"] = t.SchedulerID
-	logrus.Debugf("Test Unit deploy ", deployURL, t.BundleURL, t.SchedulerID)
+	logrus.Debugf("Test Unit deploy %v %v %v", deployURL, t.BundleURL, t.SchedulerID)
 
 	tarURL := fmt.Sprintf("%s.tar.gz", t.BundleURL)
 	_, err = os.Stat(tarURL)
@@ -236,7 +236,7 @@ func (t *TestUnit) Deploy() error {
 		tarURL = TarFileList(files, t.BundleURL, "")
 	}
 	ret := SendFile(deployURL, tarURL, params)
-	logrus.Debugf("Deploy result ", ret)
+	logrus.Debugf("Deploy result %v", ret)
 	if ret.Status == RetStatusOK {
 		if err := t.command(TestActionDeploy); err == nil {
 			t.Status = TestStatusDeployed
@@ -248,7 +248,7 @@ func (t *TestUnit) Deploy() error {
 }
 
 func (t *TestUnit) Run() error {
-	logrus.Debugf("TestUnit Run ", t)
+	logrus.Debugf("TestUnit Run %v ", t)
 	if t.Status != TestStatusDeployed && t.Status != TestStatusRunFailed {
 		return errors.New(fmt.Sprintf("Cannot run the test when the current status is :%s.", t.Status))
 	}
@@ -306,7 +306,7 @@ func (t *TestUnit) Destroy() error {
 }
 
 func (t *TestUnit) command(action TestAction) error {
-	logrus.Debugf("Test Unit command ", action)
+	logrus.Debugf("Test Unit command %v ", action)
 	db := GetDefaultDB()
 	resInterface, err := db.Get(DBResource, t.ResourceID)
 	if err != nil {
@@ -329,7 +329,7 @@ func (t *TestUnit) command(action TestAction) error {
 	deployURL := fmt.Sprintf("%s/task/%s", res.URL, t.SchedulerID)
 
 	ret := SendCommand(deployURL, []byte(cmd.String()))
-	logrus.Debugf("Send Command ", deployURL, cmd.String())
+	logrus.Debugf("Send Command %v %v", deployURL, cmd.String())
 	if ret.Status == RetStatusOK {
 		return nil
 	}
