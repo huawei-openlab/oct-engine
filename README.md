@@ -64,10 +64,11 @@ If any issues are encountered while using the oct-engine project, several avenue
 
 ### [Getting Started with oct-service](HowTO.md)
 OCT-engine support multiple servers, `testserver` will manage all the end-node machines
-with `ocitd` deployed.
-But We can run `testserver` and `ocitd` on a single machine with the default configuration (ip/port)
+with `octd` deployed.
+But We can run `testserver` and `octd` on a single machine with the default configuration (ip/port)
 to get a first impression of the OCT-engine.
 
+Also, we provide a scheduler client to test single case, as a demo, you can try this:
 ```
 ## Prepare 
 git clone https://github.com/huawei-openlab/oct-engine.git
@@ -77,37 +78,9 @@ cd scheduler
 ./scheduler &
 cd ../octd 
 ./octd &
-cd ../casemanager
-./casemanager &
-
-## Choose a testcase
-1. curl localhost:8011/case
-   {
-        "Status": "ok",
-        "Message": "1 cases founded",
-        "Data": [
-                {
-                        "ID": "71e80571dbe09a0fb166949000
-                        ...
-                }
-   }
-
-## Start a task bases on a case
-2. curl  -d  71e80571dbe09a0fb16694900095e429  localhost:8011/task
-   {
-        "Status": "ok",
-        "Message": "047a07950446e24c1aa0c6324abf6770",
-        "Data": null
-   }
-
-## Run the task
-3. curl -d apply localhost:8011/task/047a07950446e24c1aa0c6324abf6770
-   curl -d deploy localhost:8011/task/047a07950446e24c1aa0c6324abf6770
-   curl -d run localhost:8011/task/047a07950446e24c1aa0c6324abf6770
-
-## Get the report
-4. curl localhost:8011/task/047a07950446e24c1aa0c6324abf6770/report > report.tar.gz
-
+cd ../scheduler/client
+make
+./client --path=./bundle.tar.gz
 ```
 
 ### Quick look of the testing report
