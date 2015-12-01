@@ -70,7 +70,9 @@ to get a first impression of the OCT-engine.
 
 Also, we provide a scheduler client to test single case, as a demo, you can try this:
 ```
-## Prepare 
+## Prepare
+go get github.com/Sirupsen/logrus
+go get github.com/drone/routes
 git clone https://github.com/huawei-openlab/oct-engine.git
 cd oct-engine/services
 make
