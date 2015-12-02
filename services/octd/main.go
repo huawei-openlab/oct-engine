@@ -85,17 +85,8 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func RunCommand(action liboct.TestActionCommand, id string) bool {
-	db := liboct.GetDefaultDB()
-	taskInterface, err := db.Get(liboct.DBTask, id)
-	if err != nil {
-		logrus.Warnf("Cannot find the test job %v", id)
-		return false
-	}
-	task, _ := liboct.TaskFromString(taskInterface.String())
-	workingDir := strings.TrimSuffix(task.BundleURL, ".tar.gz")
+func RunCommand(action liboct.TestActionCommand, workingDir string) ([]byte, error) {
 	logrus.Debugf("Run the command <%v> in %v ", action.Command, workingDir)
-
 	if pubConfig.Class == "os" {
 		var sh string
 		//For 'os', the dir is the way to differentiate tasks
@@ -105,10 +96,10 @@ func RunCommand(action liboct.TestActionCommand, id string) bool {
 		case liboct.TestActionRun:
 			sh = action.Command
 		case liboct.TestActionCollect:
-			return true
+			return nil, nil
 		case liboct.TestActionDestroy:
 			//TODO: remove the dir
-			return true
+			return nil, nil
 		}
 		return liboct.ExecSH(sh, workingDir)
 	} else if pubConfig.Class == "container" {
@@ -117,23 +108,23 @@ func RunCommand(action liboct.TestActionCommand, id string) bool {
 		clientCommand := pubConfig.ContainerClient
 		switch liboct.TestAction(action.Action) {
 		case liboct.TestActionDeploy:
-			return true
+			return nil, nil
 		case liboct.TestActionRun:
 			//docker run  -w=/test -v /tmp/.OCT/1234/bundle:/test ubuntu sh exe.sh
 			//TODO: the ResName is the container name, so need to query if it exists. then need to pull in the apply session
 			//Now , use ubuntu as the default
 			sh = fmt.Sprintf("%s run -w=/octtest -v %s:/octtest  %s %s", clientCommand, workingDir, action.ResName, action.Command)
 		case liboct.TestActionCollect:
-			return true
+			return nil, nil
 		case liboct.TestActionDestroy:
-			return true
+			return nil, nil
 		}
 
 		logrus.Debugf(sh)
 		return liboct.ExecSH(sh, workingDir)
 	}
 
-	return false
+	return nil, nil
 }
 
 func PostTaskAction(w http.ResponseWriter, r *http.Request) {
@@ -148,10 +139,20 @@ func PostTaskAction(w http.ResponseWriter, r *http.Request) {
 
 	id := r.URL.Query().Get(":ID")
 
-	if RunCommand(action, id) {
-		liboct.RenderOK(w, "", nil)
-	} else {
+	db := liboct.GetDefaultDB()
+	taskInterface, err := db.Get(liboct.DBTask, id)
+	if err != nil {
+		liboct.RenderError(w, err)
+		return
+	}
+	task, _ := liboct.TaskFromString(taskInterface.String())
+	workingDir := strings.TrimSuffix(task.BundleURL, ".tar.gz")
+
+	val, err := RunCommand(action, workingDir)
+	if err != nil {
 		liboct.RenderErrorf(w, fmt.Sprintf("Failed in run command: %s", string(result)))
+	} else {
+		liboct.RenderOK(w, "", string(val))
 	}
 }
 
@@ -161,9 +162,15 @@ func RegisterToTestServer() {
 	//Seems there will be lots of coding while getting the system info
 	//Using config now.
 
-	content := liboct.ReadFile("./host.conf")
-	logrus.Debugf(content)
-	liboct.SendCommand(post_url, []byte(content))
+	file, err := os.Open("./host.conf")
+	defer file.Close()
+	if err != nil {
+		logrus.Info(err)
+		return
+	}
+	buf := bytes.NewBufferString("")
+	buf.ReadFrom(file)
+	liboct.SendCommand(post_url, buf.Bytes())
 }
 
 func init() {

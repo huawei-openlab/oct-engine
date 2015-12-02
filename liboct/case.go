@@ -2,6 +2,7 @@
 package liboct
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -150,12 +151,31 @@ func (tc *TestCase) GetBundleName() string {
 func (tc *TestCase) GetBundleContent() string {
 	tarURL := tc.GetBundleTarURL()
 
-	return ReadFile(tarURL)
+	file, err := os.Open(tarURL)
+	defer file.Close()
+	if err != nil {
+		logrus.Info(err)
+		return ""
+	}
+	buf := bytes.NewBufferString("")
+	buf.ReadFrom(file)
+
+	return buf.String()
 }
 
 func (tc *TestCase) GetReportContent() string {
 	reportURL := path.Join(tc.BundleURL, TestCaseReportFile)
-	return ReadFile(reportURL)
+
+	file, err := os.Open(reportURL)
+	defer file.Close()
+	if err != nil {
+		logrus.Info(err)
+		return ""
+	}
+	buf := bytes.NewBufferString("")
+	buf.ReadFrom(file)
+
+	return buf.String()
 }
 
 func (tc *TestCase) GetReportStatus() (hasReport bool, caseUpdated bool, err error) {
