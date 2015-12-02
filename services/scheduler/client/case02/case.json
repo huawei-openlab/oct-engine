@@ -1,0 +1,23 @@
+{
+        "Name": "get busybox",
+        "Summary": "Using docker to pull busybox",
+        "Version": "0.1",
+        "Owner": "liangchenye@huawei.com",
+        "Description": "Just a demo",
+        "Group": "function",
+        "License": "Apache 2.0",
+	"Units": [
+            {
+		    "Name": "hostB",
+                    "Class": "os",
+		    "Distribution": "Ubuntu",
+		    "Version": "12.04",
+		    "Arch": "x86",
+                    "CPU": 1,
+                    "Memory": 2,
+		    "Commands": {
+			"Run": "./ola02.sh"
+		    }
+            }
+	]
+}

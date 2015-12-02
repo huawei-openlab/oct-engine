@@ -247,7 +247,7 @@ func (tc *TestCase) GetBundleTarURL() string {
 
 func (tc *TestCase) generateBundleTar() string {
 	files := GetDirFiles(tc.BundleURL, "")
-	tarURL := TarFileList(files, tc.BundleURL, "")
+	tarURL, _ := TarFileList(files, tc.BundleURL, "")
 	return tarURL
 }
 

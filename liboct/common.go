@@ -39,12 +39,13 @@ func PreparePath(cachename string, filename string) (dir string) {
 }
 
 // file name filelist is like this: './source/file'
-func TarFileList(filelist []string, caseDir string, object_name string) (tarURL string) {
-	tarURL = path.Join(caseDir, object_name) + ".tar.gz"
+func TarFileList(filelist []string, caseDir string, objectName string) (tarURL string, found bool) {
+	logrus.Debugf("Tar file %v in %v", filelist, caseDir)
+	tarURL = path.Join(caseDir, objectName) + ".tar.gz"
 	fw, err := os.Create(tarURL)
 	if err != nil {
 		logrus.Warn(err)
-		return tarURL
+		return tarURL, false
 	}
 	defer fw.Close()
 	gw := gzip.NewWriter(fw)
@@ -52,9 +53,14 @@ func TarFileList(filelist []string, caseDir string, object_name string) (tarURL 
 	tw := tar.NewWriter(gw)
 	defer tw.Close()
 
+	found = false
 	for index := 0; index < len(filelist); index++ {
 		sourceFile := filelist[index]
 		logrus.Debugf("Tar file %v", sourceFile)
+		if len(sourceFile) == 0 {
+			logrus.Debugf("empty sourceFile found")
+			continue
+		}
 		fi, err := os.Stat(path.Join(caseDir, sourceFile))
 		if err != nil {
 			logrus.Warn(err)
@@ -73,8 +79,12 @@ func TarFileList(filelist []string, caseDir string, object_name string) (tarURL 
 		h.ModTime = fi.ModTime()
 		err = tw.WriteHeader(h)
 		_, err = io.Copy(tw, fr)
+		found = true
 	}
-	return tarURL
+	if !found {
+		os.Remove(tarURL)
+	}
+	return tarURL, found
 }
 
 func GetDirFiles(base_dir string, dir string) (files []string) {
@@ -96,7 +106,7 @@ func GetDirFiles(base_dir string, dir string) (files []string) {
 func TarDir(caseDir string) (tarURL string) {
 	files := GetDirFiles(caseDir, "")
 	case_name := path.Base(caseDir)
-	tarURL = TarFileList(files, caseDir, case_name)
+	tarURL, _ = TarFileList(files, caseDir, case_name)
 	return tarURL
 }
 

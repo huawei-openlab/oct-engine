@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -47,7 +46,8 @@ func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 
 	task, _ := liboct.TaskFromString(taskInterface.String())
 	workingDir := strings.TrimSuffix(task.BundleURL, ".tar.gz")
-	realURL := path.Join(workingDir, filename)
+	//The real working dir is under 'source'
+	realURL := path.Join(workingDir, "source", filename)
 	file, err := os.Open(realURL)
 	defer file.Close()
 	if err != nil {
@@ -76,6 +76,12 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 		var task liboct.TestTask
 		task.ID = id
 		task.BundleURL = realURL
+		if name, ok := params["name"]; ok {
+			task.Name = name
+		} else {
+			task.Name = id
+			logrus.Warnf("Cannot find the name of the task.")
+		}
 		db.Update(liboct.DBTask, id, task)
 
 		liboct.RenderOK(w, "", nil)
@@ -87,40 +93,20 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 func RunCommand(action liboct.TestActionCommand, workingDir string) ([]byte, error) {
 	logrus.Debugf("Run the command <%v> in %v ", action.Command, workingDir)
 	if pubConfig.Class == "os" {
-		var sh string
-		//For 'os', the dir is the way to differentiate tasks
-		switch liboct.TestAction(action.Action) {
-		case liboct.TestActionDeploy:
-			sh = action.Command
-		case liboct.TestActionRun:
-			sh = action.Command
-		case liboct.TestActionCollect:
-			return nil, nil
-		case liboct.TestActionDestroy:
-			//TODO: remove the dir
-			return nil, nil
-		}
-		return liboct.ExecSH(sh, workingDir)
+		return liboct.ExecSH(action.Command, workingDir)
 	} else if pubConfig.Class == "container" {
-		var sh string
 		//For 'container', the 'dir' is the way to store test files and use 'id' to differentiate tasks
 		clientCommand := pubConfig.ContainerClient
-		switch liboct.TestAction(action.Action) {
-		case liboct.TestActionDeploy:
-			return nil, nil
-		case liboct.TestActionRun:
+		//For container, the action of deploy and run is merged.
+		if liboct.TestAction(action.Action) == liboct.TestActionRun {
 			//docker run  -w=/test -v /tmp/.OCT/1234/bundle:/test ubuntu sh exe.sh
 			//TODO: the ResName is the container name, so need to query if it exists. then need to pull in the apply session
 			//Now , use ubuntu as the default
-			sh = fmt.Sprintf("%s run -w=/octtest -v %s:/octtest  %s %s", clientCommand, workingDir, action.ResName, action.Command)
-		case liboct.TestActionCollect:
-			return nil, nil
-		case liboct.TestActionDestroy:
-			return nil, nil
+			sh := fmt.Sprintf("%s run -w=/octtest -v %s:/octtest  %s %s", clientCommand, workingDir, action.ResName, action.Command)
+			logrus.Debugf(sh)
+			return liboct.ExecSH(sh, workingDir)
 		}
 
-		logrus.Debugf(sh)
-		return liboct.ExecSH(sh, workingDir)
 	}
 
 	return nil, nil
@@ -151,17 +137,24 @@ func PostTaskAction(w http.ResponseWriter, r *http.Request) {
 		os.MkdirAll(workingDir, 0777)
 	}
 
-	val, err := RunCommand(action, workingDir)
+	switch action.Action {
+	case liboct.TestActionDeploy:
+		fallthrough
+	case liboct.TestActionRun:
+		val, err := RunCommand(action, workingDir)
 
-	//Save the logs
-	logFile := fmt.Sprintf("%s/test.log", workingDir)
-	ioutil.WriteFile(logFile, val, 0644)
-
-	if err != nil {
-		liboct.RenderErrorf(w, fmt.Sprintf("Failed in run command: %s", string(result)))
-	} else {
-		liboct.RenderOK(w, "", string(val))
+		//Save the logs
+		logFile := fmt.Sprintf("%s/%s.log", workingDir, task.Name)
+		ioutil.WriteFile(logFile, val, 0644)
+		if err != nil {
+			liboct.RenderErrorf(w, fmt.Sprintf("Failed in run command: %s", string(result)))
+		} else {
+			liboct.RenderOK(w, "", string(val))
+		}
+		return
 	}
+
+	liboct.RenderErrorf(w, fmt.Sprintf("Action %s is not support yet", action.Action))
 }
 
 func RegisterToTestServer() {
@@ -226,6 +219,6 @@ func main() {
 	logrus.Infof("Start to listen %v", port)
 	err := http.ListenAndServe(port, nil)
 	if err != nil {
-		log.Fatal("ListenAndServe: ", err)
+		logrus.Fatalf("ListenAndServe: %v ", err)
 	}
 }

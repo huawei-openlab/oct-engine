@@ -23,6 +23,9 @@ type TestTask struct {
 
 	//Return from the scheduler
 	SchedulerID string
+
+	//Used in octd, keep track of the unit name
+	Name string
 }
 
 func (task TestTask) String() string {

@@ -67,7 +67,7 @@ func main() {
 
 	}
 
-	logrus.SetLevel(logrus.DebugLevel)
+	logrus.SetLevel(logrus.InfoLevel)
 
 	if err := app.Run(os.Args); err != nil {
 		logrus.Fatalf("Run App err %v\n", err)
@@ -139,6 +139,14 @@ func RunTest(casePath string, sAddr string) {
 		logrus.Debugf("Success in run task %v", ret)
 	}
 
+	ret = liboct.SendCommand(postURL, []byte("collect"))
+	if ret.Status != liboct.RetStatusOK {
+		logrus.Warnf("Failed to run task %v", ret)
+		return
+	} else {
+		logrus.Debugf("Success in run task %v", ret)
+	}
+
 	getURL := fmt.Sprintf("%s/task/%s/report", sAddr, taskID)
 	resp, err := http.Get(getURL)
 	if err != nil {
@@ -154,8 +162,9 @@ func RunTest(casePath string, sAddr string) {
 
 	reportTar := fmt.Sprintf("%s/%s-report.tar.gz", TestCache, taskID)
 	ioutil.WriteFile(reportTar, respBody, 0644)
-
-	logrus.Infof("The report generated here:\n%v", reportTar)
+	liboct.UntarFile(reportTar, fmt.Sprintf("%s/%s", TestCache, taskID))
+	logrus.Infof("Success in run the test, the report generated here:\n%v", fmt.Sprintf("%s/%s", TestCache, taskID))
+	os.Remove(reportTar)
 }
 
 func QueryTest(ID string, sAddr string) {

@@ -227,13 +227,14 @@ func (t *TestUnit) Deploy() error {
 	deployURL := fmt.Sprintf("%s/task", res.URL)
 	params := make(map[string]string)
 	params["id"] = t.SchedulerID
+	params["name"] = t.Name
 	logrus.Debugf("Test Unit deploy %v %v %v", deployURL, t.BundleURL, t.SchedulerID)
 
 	tarURL := fmt.Sprintf("%s.tar.gz", t.BundleURL)
 	_, err = os.Stat(tarURL)
 	if err != nil {
 		files := GetDirFiles(t.BundleURL, "")
-		tarURL = TarFileList(files, t.BundleURL, "")
+		tarURL, _ = TarFileList(files, t.BundleURL, "")
 	}
 	ret := SendFile(deployURL, tarURL, params)
 	logrus.Debugf("Deploy result %v", ret)
@@ -272,24 +273,37 @@ func (t *TestUnit) Collect() error {
 		return err
 	}
 	res, _ := ResourceFromString(resInterface.String())
+
+	//Get log
+	logURL := fmt.Sprintf("%s/task/%s/report?File=%s.log", res.URL, t.SchedulerID, t.Name)
+	if respLog, err := http.Get(logURL); err == nil {
+		defer respLog.Body.Close()
+		if respLogBody, err := ioutil.ReadAll(respLog.Body); err == nil {
+			filename := path.Join(t.BundleURL, "source", fmt.Sprintf("%s.log", t.Name))
+			ioutil.WriteFile(filename, respLogBody, os.ModePerm)
+			logrus.Debugf("Got log file %v", filename)
+		}
+	} else {
+		logrus.Debugf("Cannot get the log file %v.log", t.Name)
+	}
+
 	t.Status = TestStatusCollecting
 	reportURL := fmt.Sprintf("%s/task/%s/report?File=", res.URL, t.SchedulerID, t.ReportURL)
-
-	resp, err := http.Get(reportURL)
-	if err != nil {
+	if resp, err := http.Get(reportURL); err != nil {
 		t.Status = TestStatusCollectFailed
 		return err
-	}
-	defer resp.Body.Close()
-	resp_body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Status = TestStatusCollectFailed
-		return err
-	}
-	filename := path.Join(SchedulerCacheDir, t.SchedulerID, t.ReportURL)
-	ioutil.WriteFile(filename, resp_body, os.ModePerm)
+	} else {
+		defer resp.Body.Close()
+		if respBody, err := ioutil.ReadAll(resp.Body); err != nil {
+			t.Status = TestStatusCollectFailed
+			return err
+		} else {
+			filename := path.Join(t.BundleURL, "source", t.ReportURL)
+			ioutil.WriteFile(filename, respBody, os.ModePerm)
 
-	t.Status = TestStatusCollected
+			t.Status = TestStatusCollected
+		}
+	}
 	return nil
 }
 

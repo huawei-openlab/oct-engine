@@ -1,0 +1,23 @@
+{
+        "Name": "Hello, world",
+        "Summary": "Using docker to run hello, world",
+        "Version": "0.1",
+        "Owner": "liangchenye@huawei.com",
+        "Description": "Just a demo",
+        "Group": "function",
+        "License": "Apache 2.0",
+	"Units": [
+            {
+		    "Name": "hostA",
+                    "Class": "os",
+		    "Distribution": "Ubuntu",
+		    "Version": "12.04",
+		    "Arch": "x86",
+                    "CPU": 1,
+                    "Memory": 2,
+		    "Commands": {
+			"Run": "./ola01.sh"
+		    }
+            }
+	]
+}

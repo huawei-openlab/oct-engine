@@ -45,18 +45,28 @@ func GetTaskReport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//Tar the reports in the cacheDir
-	reportURL := path.Join(liboct.SchedulerCacheDir, s.ID, "reports.tar.gz")
+	reportURL := path.Join(strings.TrimSuffix(s.Case.GetBundleURL(), ".tar.gz"), "source", "reports.tar.gz")
+	found := false
 	logrus.Debugf("Get reportURL %s", reportURL)
 	_, err = os.Stat(reportURL)
 	if err != nil {
-		logrus.Warn(err)
+		logrus.Debugf("Regenerate the report")
 		var reports []string
 		for index := 0; index < len(s.Case.Units); index++ {
-			reports = append(reports, s.Case.Units[index].ReportURL)
+			if len(s.Case.Units[index].ReportURL) > 0 {
+				reports = append(reports, s.Case.Units[index].ReportURL)
+			}
+			//Add log
+			reports = append(reports, fmt.Sprintf("%s.log", s.Case.Units[index].Name))
 		}
-		reportURL = liboct.TarFileList(reports, path.Join(liboct.SchedulerCacheDir, s.ID), "reports")
+		tarDir := path.Join(strings.TrimSuffix(s.Case.GetBundleURL(), ".tar.gz"), "source")
+		reportURL, found = liboct.TarFileList(reports, tarDir, "reports")
 	}
 
+	if !found {
+		liboct.RenderError(w, err)
+		return
+	}
 	file, err := os.Open(reportURL)
 	defer file.Close()
 	if err != nil {
@@ -119,6 +129,7 @@ func updateSchedulerBundle(id string, oldURL string) {
 	//bundleURL is the directory of the bundle
 	s.Case.SetBundleURL(strings.TrimSuffix(newURL, ".tar.gz"))
 	db.Update(liboct.DBScheduler, id, s)
+	os.RemoveAll(path.Dir(oldURL))
 }
 
 func ReceiveTask(w http.ResponseWriter, r *http.Request) {
