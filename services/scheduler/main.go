@@ -175,7 +175,7 @@ func init() {
 	if pubConfig.Debug {
 		logrus.SetLevel(logrus.DebugLevel)
 	} else {
-		logrus.SetLevel(logrus.WarnLevel)
+		logrus.SetLevel(logrus.InfoLevel)
 	}
 	db := liboct.GetDefaultDB()
 	db.RegistCollect(liboct.DBResource)

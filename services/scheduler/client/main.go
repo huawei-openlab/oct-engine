@@ -78,14 +78,14 @@ func RunTest(casePath string, sAddr string) {
 	var caseBundle string
 	var caseTar string
 
+	if _, err := os.Stat(TestCache); err != nil {
+		os.MkdirAll(TestCache, 0777)
+	}
 	if p, err := os.Stat(casePath); err != nil {
 		logrus.Fatal(err)
 	} else if p.IsDir() {
 		caseBundle = casePath
 	} else {
-		if _, err := os.Stat(TestCache); err != nil {
-			os.MkdirAll(TestCache, 0777)
-		}
 		caseBundle, _ = ioutil.TempDir(TestCache, "oct-")
 		defer os.RemoveAll(caseBundle)
 		if strings.HasSuffix(casePath, ".json") {
