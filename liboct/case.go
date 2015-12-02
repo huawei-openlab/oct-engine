@@ -256,6 +256,8 @@ func CaseFromTar(tarURL string, bundleURL string) (TestCase, error) {
 	bundleDir := ""
 	if len(bundleURL) == 0 {
 		bundleDir = strings.TrimSuffix(tarURL, ".tar.gz")
+	} else {
+		bundleDir = bundleURL
 	}
 	UntarFile(tarURL, bundleDir)
 	return CaseFromBundle(bundleDir)

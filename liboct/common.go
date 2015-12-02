@@ -102,8 +102,11 @@ func TarDir(caseDir string) (tarURL string) {
 
 func UntarFile(filename string, cacheURL string) {
 	logrus.Debugf("UntarFile %v %v", filename, cacheURL)
-	_, err := os.Stat(filename)
-	if err != nil {
+	if _, err := os.Stat(cacheURL); err != nil {
+		logrus.Debugf("%v is not exist")
+		os.MkdirAll(cacheURL, 0777)
+	}
+	if _, err := os.Stat(filename); err != nil {
 		logrus.Warn(err)
 		return
 	}
@@ -132,18 +135,24 @@ func UntarFile(filename string, cacheURL string) {
 			panic(err)
 		}
 
-		filename := path.Join(cacheURL, h.Name)
-		dir := path.Dir(filename)
+		cacheFile := path.Join(cacheURL, h.Name)
+		logrus.Debugf("%v %v %v %v", cacheFile, h.Mode, h.Typeflag, tar.TypeDir)
+		dir := path.Dir(cacheFile)
 		if _, err := os.Stat(dir); err != nil {
 			os.MkdirAll(dir, 0777)
 		}
-		fw, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY, os.FileMode(h.Mode))
-		if err != nil {
-			//Dir for example
-			continue
+		if h.Typeflag == tar.TypeDir {
+			logrus.Debugf("%v is a dir", cacheFile)
+			os.MkdirAll(cacheFile, 0777)
 		} else {
-			io.Copy(fw, tr)
-			fw.Close()
+			fw, err := os.OpenFile(cacheFile, os.O_CREATE|os.O_WRONLY, os.FileMode(h.Mode))
+			if err != nil {
+				//Dir for example
+				continue
+			} else {
+				io.Copy(fw, tr)
+				fw.Close()
+			}
 		}
 		//TODO: set the time/own and the etc..
 	}
@@ -256,6 +265,10 @@ func MD5(data string) (val string) {
 }
 
 func ExecSH(scripts string, dir string) ([]byte, error) {
+	if len(scripts) == 0 {
+		logrus.Debugf("Exec script is empty.")
+		return nil, nil
+	}
 	cmd := exec.Command("/bin/sh", "-c", scripts)
 	cmd.Dir = dir
 	cmd.Stdin = os.Stdin

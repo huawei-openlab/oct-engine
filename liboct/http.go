@@ -156,7 +156,6 @@ func ReceiveFile(w http.ResponseWriter, r *http.Request, cacheURL string) (realU
 	r.ParseMultipartForm(32 << 20)
 	file, handler, err := r.FormFile("tcfile")
 
-	logrus.Debugf("Receive file %v %v ", cacheURL, handler.Filename)
 	params = make(map[string]string)
 
 	if r.MultipartForm != nil {
@@ -184,6 +183,7 @@ func ReceiveFile(w http.ResponseWriter, r *http.Request, cacheURL string) (realU
 		realDir, _ = ioutil.TempDir(cacheURL, "oct-received-file-")
 	}
 	realURL = fmt.Sprintf("%s/%s", realDir, handler.Filename)
+	logrus.Debugf("Receive file %v ", realURL)
 	f, err := os.Create(realURL)
 	if err != nil {
 		logrus.Warn(err)

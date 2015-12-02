@@ -70,7 +70,6 @@ func ReceiveTask(w http.ResponseWriter, r *http.Request) {
 	logrus.Debugf("ReceiveTask %v", realURL)
 
 	if id, ok := params["id"]; ok {
-		//The real url may not be the test case format, could be only files
 		if strings.HasSuffix(realURL, ".tar.gz") {
 			liboct.UntarFile(realURL, strings.TrimSuffix(realURL, ".tar.gz"))
 		}
@@ -146,9 +145,18 @@ func PostTaskAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	task, _ := liboct.TaskFromString(taskInterface.String())
-	workingDir := strings.TrimSuffix(task.BundleURL, ".tar.gz")
+	workingDir := path.Join(strings.TrimSuffix(task.BundleURL, ".tar.gz"), "source")
+	if _, err := os.Stat(workingDir); err != nil {
+		//Create in the case which has no 'source' files
+		os.MkdirAll(workingDir, 0777)
+	}
 
 	val, err := RunCommand(action, workingDir)
+
+	//Save the logs
+	logFile := fmt.Sprintf("%s/test.log", workingDir)
+	ioutil.WriteFile(logFile, val, 0644)
+
 	if err != nil {
 		liboct.RenderErrorf(w, fmt.Sprintf("Failed in run command: %s", string(result)))
 	} else {
@@ -205,25 +213,6 @@ func init() {
 	RegisterToTestServer()
 }
 
-func GetClair(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get(":ID")
-	realURL := path.Join("/tmp/", id)
-
-	file, err := os.Open(realURL)
-	defer file.Close()
-	if err != nil {
-		logrus.Warnf("Cannot file the %v", realURL)
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("Cannot open the file: " + realURL))
-		return
-	}
-
-	buf := bytes.NewBufferString("")
-	buf.ReadFrom(file)
-
-	w.Write([]byte(buf.String()))
-}
-
 func main() {
 	var port string
 	port = fmt.Sprintf(":%d", pubConfig.Port)
@@ -233,7 +222,6 @@ func main() {
 	mux.Post("/task/:ID", PostTaskAction)
 	mux.Get("/task/:ID/report", GetTaskReport)
 
-	mux.Get("/:ID", GetClair)
 	http.Handle("/", mux)
 	logrus.Infof("Start to listen %v", port)
 	err := http.ListenAndServe(port, nil)
