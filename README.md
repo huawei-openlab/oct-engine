@@ -81,8 +81,7 @@ cd scheduler
 cd ../octd 
 ./octd &
 cd ../scheduler/client
-make
-./client --path=./bundle.tar.gz
+./client --path=case01
 ```
 
 ### Quick look of the testing report
