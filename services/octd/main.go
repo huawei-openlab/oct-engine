@@ -8,24 +8,12 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/drone/routes"
 	"github.com/huawei-openlab/oct-engine/liboct"
-	"time"
-
-	"github.com/coreos/clair/database"
-	"github.com/coreos/clair/updater"
-	"github.com/coreos/clair/utils"
-	"github.com/coreos/clair/utils/types"
-	"github.com/coreos/clair/worker"
-
-	_ "github.com/coreos/clair/updater/fetchers"
-	_ "github.com/coreos/clair/worker/detectors/os"
-	_ "github.com/coreos/clair/worker/detectors/packages"
 )
 
 type OCTDConfig struct {
@@ -186,11 +174,6 @@ func RegisterToTestServer() {
 	liboct.SendCommand(post_url, buf.Bytes())
 }
 
-func GetClair(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get(":ID")
-	RunLib(id)
-}
-
 func init() {
 	of, err := os.Open("octd.conf")
 	if err != nil {
@@ -226,32 +209,6 @@ func init() {
 }
 
 func main() {
-	// Open database
-	err := database.Open("bolt", "/db")
-	if err != nil {
-		logrus.Fatal(err)
-	}
-	defer database.Close()
-	st := utils.NewStopper()
-
-	st.Begin()
-	go WebMain()
-
-	// Start updater
-	st.Begin()
-	d, _ := time.ParseDuration("1h0m0s")
-	go updater.Run(d, st)
-
-	// This blocks the main goroutine which is required to keep all the other goroutines running
-	interrupts := make(chan os.Signal, 1)
-	signal.Notify(interrupts, os.Interrupt)
-	<-interrupts
-	logrus.Infof("Received interruption, gracefully stopping ...")
-	st.Stop()
-}
-
-func WebMain() {
-
 	var port string
 	port = fmt.Sprintf(":%d", pubConfig.Port)
 
@@ -260,136 +217,10 @@ func WebMain() {
 	mux.Post("/task/:ID", PostTaskAction)
 	mux.Get("/task/:ID/report", GetTaskReport)
 
-	mux.Get("/clair/:ID", GetClair)
 	http.Handle("/", mux)
 	logrus.Infof("Start to listen %v", port)
 	err := http.ListenAndServe(port, nil)
 	if err != nil {
 		logrus.Fatalf("ListenAndServe: %v ", err)
 	}
-}
-
-func RunLib(ID string) {
-	ParentID := ""
-	Path := fmt.Sprintf("/tmp/analyze-local-image-108956073/%s/layer.tar", ID)
-	logrus.Infof(Path)
-	test := true
-	if test {
-
-		// Process data.
-		logrus.Infof("Start to process")
-		if err := worker.Process(ID, ParentID, Path); err != nil {
-			logrus.Infof("End find err process: %v", err)
-			return
-		}
-		logrus.Infof("End to process")
-
-		// Find layer.
-		layer, err := database.FindOneLayerByID(ID, []string{database.FieldLayerParent, database.FieldLayerOS})
-		if err != nil {
-			logrus.Fatal(err)
-		}
-
-		// Get OS.
-		os, err := layer.OperatingSystem()
-		if err != nil {
-			logrus.Fatal(err)
-		} else {
-			logrus.Infof("Get os %v", os)
-		}
-
-		// Get minumum priority parameter.
-		minimumPriority := types.Priority("Low")
-
-		// Find layer
-		layer1, err := database.FindOneLayerByID(ID, []string{database.FieldLayerParent, database.FieldLayerPackages})
-		if err != nil {
-			logrus.Infof("Cannot get layer, :%v", err)
-			return
-		}
-
-		// Find layer's packages.
-		packagesNodes, err := layer1.AllPackages()
-		if err != nil {
-			logrus.Infof("Cannot get pcakges %v", err)
-			return
-		}
-
-		// Find vulnerabilities.
-		vulnerabilities, err := getVulnerabilitiesFromLayerPackagesNodes(packagesNodes, minimumPriority, []string{database.FieldVulnerabilityID, database.FieldVulnerabilityLink, database.FieldVulnerabilityPriority, database.FieldVulnerabilityDescription})
-		if err != nil {
-			logrus.Infof("Cannot get vl %v", err)
-			return
-		}
-		for index := 0; index < len(vulnerabilities); index++ {
-			logrus.Infof("Get vul %v", *vulnerabilities[index])
-		}
-
-	}
-
-}
-
-// getVulnerabilitiesFromLayerPackagesNodes returns the list of vulnerabilities
-// affecting the provided package nodes, filtered by Priority.
-func getVulnerabilitiesFromLayerPackagesNodes(packagesNodes []string, minimumPriority types.Priority, selectedFields []string) ([]*database.Vulnerability, error) {
-	if len(packagesNodes) == 0 {
-		return []*database.Vulnerability{}, nil
-	}
-
-	// Get successors of the packages.
-	packagesNextVersions, err := getSuccessorsFromPackagesNodes(packagesNodes)
-	if err != nil {
-		return []*database.Vulnerability{}, err
-	}
-	if len(packagesNextVersions) == 0 {
-		return []*database.Vulnerability{}, nil
-	}
-
-	// Find vulnerabilities fixed in these successors.
-	vulnerabilities, err := database.FindAllVulnerabilitiesByFixedIn(packagesNextVersions, selectedFields)
-	if err != nil {
-		return []*database.Vulnerability{}, err
-	}
-
-	// Filter vulnerabilities depending on their priority and remove duplicates.
-	filteredVulnerabilities := []*database.Vulnerability{}
-	seen := map[string]struct{}{}
-	for _, v := range vulnerabilities {
-		if minimumPriority.Compare(v.Priority) <= 0 {
-			if _, alreadySeen := seen[v.ID]; !alreadySeen {
-				filteredVulnerabilities = append(filteredVulnerabilities, v)
-				seen[v.ID] = struct{}{}
-			}
-		}
-	}
-
-	return filteredVulnerabilities, nil
-}
-
-// getSuccessorsFromPackagesNodes returns the node list of packages that have
-// versions following the versions of the provided packages.
-func getSuccessorsFromPackagesNodes(packagesNodes []string) ([]string, error) {
-	if len(packagesNodes) == 0 {
-		return []string{}, nil
-	}
-
-	// Get packages.
-	packages, err := database.FindAllPackagesByNodes(packagesNodes, []string{database.FieldPackageNextVersion})
-	if err != nil {
-		return []string{}, err
-	}
-
-	// Find all packages' successors.
-	var packagesNextVersions []string
-	for _, pkg := range packages {
-		nextVersions, err := pkg.NextVersions([]string{})
-		if err != nil {
-			return []string{}, err
-		}
-		for _, version := range nextVersions {
-			packagesNextVersions = append(packagesNextVersions, version.Node)
-		}
-	}
-
-	return packagesNextVersions, nil
 }
