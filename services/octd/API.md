@@ -7,6 +7,7 @@ The 'OCID' is the program installed on the hostOS, used to communicate with the 
 - The [attributes](#attributes "attributes") are listed at the end of this document.
 
 ##Configs
+
 |Key|Type|Description|Example|
 |------|----|------| ----- |
 | TSurl | string | The url of the Scheduler, with the port| "http://localhost:8001" |
@@ -61,6 +62,7 @@ Tell OCTD which commands need to run.
 **Input**
 
 |Name|Type|Description|
+
 |------|-----|-----------|
 | Action | string | The acion of the task, same with the ID in 'Scheduler' and 'Scheduler'|
 | Command | string | Command of the action|
@@ -81,6 +83,7 @@ GET /task/:TaskID/report
 **Parameters**
 
 | *Name* | *Type* | *Description* |
+
 | -------| ------ | --------- |
 | File | string | The result file url. Defined in the config.json in each test case. |
 | ID | string | The task ID, same with the ID in 'Scheduler' and 'Scheduler' |
